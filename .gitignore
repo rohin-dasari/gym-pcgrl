@@ -36,3 +36,7 @@ runs/
 
 # Saved models
 *.zip
+
+# saved vim sessions
+*.vim*
+

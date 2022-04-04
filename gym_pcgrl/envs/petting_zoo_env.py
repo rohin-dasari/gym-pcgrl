@@ -2,17 +2,17 @@ from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
 from gym_pcgrl.envs.probs import PROBLEMS
 from gym_pcgrl.envs.reps import REPRESENTATIONS
 from gym_pcgrl.envs.helper import get_int_prob, get_string_map
+from pettingzoo import AECEnv
+from pettingzoo.utils import agent_selector
 
 import numpy as np
 import gym
 from gym import spaces
 import PIL
-from pettingzoo import AECEnv
 
 
 
-"Multi-agent PCGRL Gym Environment"
-class MAPcgrlEnv(PcgrlEnv, AECEnv):
+class MAPcgrlEnv_pettingzoo(PcgrlEnv, AECEnv):
     """
     Constructor for the interface.
 
@@ -27,16 +27,11 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     # check reward signal -> for a simple shared signal, do I need to change stuff?
     # how to define different observations and actions for each agent
     # assume all agents have same model, assign roles at environment build time
-    def __init__(self, prob="binary", rep="marl_narrow", context=None, rep_kwargs={}, **kwargs):
-
-
-        self._prob = PROBLEMS['zelda']() # hardcoded problsm
+    def __init__(self, prob="binary", rep="marl_narrow"):
+        self.metadata = {'is_parallelizable': True}
+        self._prob = PROBLEMS[prob]()
         self.agents = self._prob.get_tile_types()
-
-        self.possible_agents = self.agents
-        self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
-
-        self._rep = REPRESENTATIONS['marl_narrow'](self.agents)
+        self._rep = REPRESENTATIONS[rep](self.agents)
         self._rep_stats = None
         self._iteration = 0
         self._changes = 0
@@ -46,33 +41,33 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self.seed()
         self.viewer = None
 
+        self._action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
+        self._observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
+        self._heatmaps = self.init_heatmaps()
+
+        self.possible_agents = self.agents[:]
+        self.agent_name_mapping = dict(zip(self.possible_agents, list(range(len(self.possible_agents)))))
+
+        self._action_spaces = self._action_space
+        self._observation_spaces = self._observation_space
         self.dones = {agent: False for agent in self.agents}
-        self.dones['__all__'] = False
 
-        self.action_spaces = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_spaces = self._rep.get_observation_space(
-                self._prob._width,
-                self._prob._height,
-                self.get_num_tiles(),
-                self._max_changes
-                )
+        self._agent_selector = agent_selector(self.agents)
+        self.agent_selection = self._agent_selector.next()
+        self._cumulative_rewards = {agent: 0 for agent in self.agents}
+        self.rewards = {agent: 0 for agent in self.agents}
+        self.infos = {agent: {} for agent in self.agents}
 
-
-    """
-    """
     def observation_space(self, agent):
-        return self.observation_spaces[agent]
+        return self._observation_spaces[agent]
 
-    """
-    """
     def action_space(self, agent):
-        return self.action_spaces[agent]
+        return self._action_spaces[agent]
 
-    """
-    """
-    def get_agent_ids(self):
-        return self.agents
-
+    def observe(self, agent):
+        obs = self._rep.get_observation(agent) # get observations from representation
+        obs['heatmap'] = self._heatmaps[agent] # append heatmap to observation
+        return obs
 
     """
     Resets the environment to the start state
@@ -92,9 +87,6 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._prob.reset(self._rep_stats)
         self._heatmaps = self.init_heatmaps()
 
-        self.dones = {agent: False for agent in self.agents}
-        self.dones['__all__'] = False
-
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
             obs["heatmap"] = self._heatmaps[agent].copy()
@@ -104,6 +96,14 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     Define dimensions of heatmap in the observation space for each agent
     """
     def init_heatmaps(self):
+        for obs in self._observation_space.values():
+            obs.spaces['heatmap'] = spaces.Box(
+                    low=0,
+                    high=self._max_changes,
+                    dtype=np.float64,
+                    shape=(self._prob._height, self._prob._width)
+                    )
+        
         height, width = self._prob._height, self._prob._width
         heatmaps = {agent: np.zeros((height, width)) for agent in self.agents}
         return heatmaps
@@ -126,15 +126,14 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._iteration += 1
         #save copy of the old stats to calculate the reward
         old_stats = self._rep_stats
-
+        # update the current state to the new state based on the taken action
+        #change, x, y = self._rep.update(actions)
         # update game state based on selected actions
         updates = self._rep.update(actions)
 
         changes = [self.update_heatmap(agent, update) for agent, update in zip(self.agents, updates)]
-        new_stats = old_stats
         if sum(changes) > 0:
-            new_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-            self._rep_stats = new_stats
+            self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
 
         # get next state
         observations = self._rep.get_observations()
@@ -143,31 +142,25 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
 
         # compute reward
         # assume shared reward signal
-        reward = self._prob.get_reward(new_stats, old_stats)
-        rewards = {agent: reward for agent in self.agents}
+        reward = self._prob.get_reward(self._rep_stats, old_stats)
+        rewards = [reward for _ in self.agents]
 
         # check game end conditions
-        # assume shared done signal
-        done = self.check_done(new_stats, old_stats)
-        dones = {agent: done for agent in self.agents}
-        dones['__all__'] = done
-        self.dones = dones
-
+        done = self.check_done(old_stats)
+        self.dones = {agent: done for agent in self.agents}
 
         # collect metadata
-        common_metadata = self._prob.get_debug_info(new_stats, old_stats)
-        common_info = {}
-        common_info["iterations"] = self._iteration
-        common_info["changes"] = self._changes
-        common_info["max_iterations"] = self._max_iterations
-        common_info["max_changes"] = self._max_changes
-        info = {}
-        info['__common__'] = {'metadata': common_metadata, **common_info}
-        for agent in self.agents:
-            info[agent] = {}
+        info = self._prob.get_debug_info(self._rep_stats,old_stats)
+        info["iterations"] = self._iteration
+        info["changes"] = self._changes
+        info["max_iterations"] = self._max_iterations
+        info["max_changes"] = self._max_changes
 
         #return the values
-        return observations, rewards, dones, info
+        return observations, rewards, done, info
+
+    def step(self, action):
+        pass
 
     """
 
@@ -193,33 +186,10 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     Parameters:
         old_stats: stats regarding the representation from the previous timestep
     """
-    def check_done(self, new_stats, old_stats):
-
-        return self._prob.get_episode_over(new_stats, old_stats) or \
+    def check_done(self, old_stats):
+        return self._prob.get_episode_over(self._rep_stats,old_stats) or \
                 self._changes >= self._max_changes or \
                 self._iteration >= self._max_iterations
 
-    """
-    Adjust the used parameters by the problem or representation
 
-    Parameters:
-        change_percentage (float): a value between 0 and 1 that determine the
-        percentage of tiles the algorithm is allowed to modify. Having small
-        values encourage the agent to learn to react to the input screen.
-        **kwargs (dict(string,any)): the defined parameters depend on the used
-        representation and the used problem
-    """
-    def adjust_param(self, **kwargs):
-        if 'change_percentage' in kwargs:
-            percentage = min(1, max(0, kwargs.get('change_percentage')))
-            self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
-        self._prob.adjust_param(**kwargs)
-        self._rep.adjust_param(**kwargs)
-        self.action_spaces = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_spaces = self._rep.get_observation_space(
-                self._prob._width,
-                self._prob._height,
-                self.get_num_tiles(),
-                self._max_changes
-                )
+

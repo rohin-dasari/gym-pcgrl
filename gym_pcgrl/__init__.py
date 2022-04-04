@@ -10,3 +10,9 @@ for prob in PROBLEMS.keys():
             entry_point='gym_pcgrl.envs:PcgrlEnv',
             kwargs={"prob": prob, "rep": rep}
         )
+
+register(
+            id='MAPcgrl-zelda-narrow-v0',
+            entry_point='gym_pcgrl.envs.multi_pcgrl_env:MAPcgrlEnv',
+            kwargs={'prob': 'zelda'}
+        )

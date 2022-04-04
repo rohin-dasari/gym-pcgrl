@@ -22,7 +22,7 @@ def reset_check(method):
     def _wrapper(*args, **kwargs):
         self = args[0]
         if not self._reset:
-            warnings.warn('The environment has not been reset', RuntimeWarning)
+            warnings.warn(f'The environment should be reset before calling {method.__name__}', RuntimeWarning)
         return method(*args, **kwargs)
     return _wrapper
 
@@ -35,7 +35,9 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     In the multi-agent narrow representation, each agent is supplied with the
     full current state and each agent is given its own position to modify
     """
-    def __init__(self, agents):
+    # Note that random tile is set to a default value in the parent class
+    # Here, we allow the user to override this value through the random_value parameter
+    def __init__(self, agents, random_tile=False):
         super().__init__()
         self.agents = agents
 
@@ -43,6 +45,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         # we need to store them in this dictionary
         # each key corresponds to an unique agent id
         # each value corresponds to that agent's position
+        self._random_tile = random_tile
         self.agent_positions = {}
         self._reset = False
 
@@ -82,7 +85,6 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         Discrete: the action space used by that narrow representation which
         correspond to which value for each tile type
     """
-    @reset_check
     def get_action_space(self, width, height, num_tiles):
         return {agent: spaces.Discrete(2) for agent in self.agents}
 
@@ -99,13 +101,18 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         Dict: the observation space used by that representation. "pos" Integer
         x,y position for the current location. "map" 2D array of tile numbers
     """
-    @reset_check
-    def get_observation_space(self, width, height, num_tiles):
+    def get_observation_space(self, width, height, num_tiles, max_changes):
         obs_space = {}
         for agent in self.agents:
             obs = spaces.Dict({
+                "map": spaces.Box(low=0, high=num_tiles-1, dtype=np.uint8, shape=(height, width)),
                 "pos": spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), dtype=np.uint8),
-                "map": spaces.Box(low=0, high=num_tiles-1, dtype=np.uint8, shape=(height, width))
+                "heatmap": spaces.Box( 
+                    low=0,
+                    high=max_changes,
+                    dtype=np.uint8,
+                    shape=(height, width)
+                    )
                 })
             obs_space[agent] = obs
 
@@ -120,21 +127,21 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     @reset_check
     def get_observations(self):
-        observations = {}
-        for agent in self.agents:
-            observations[agent] = self.get_observation(agent)
-        return observations
+        return {agent: self.get_observation(agent) for agent in self.agents}
 
     @reset_check
     def get_observation(self, agent):
         position = self.agent_positions[agent]
         return OrderedDict({
-            "pos": np.array([position['x'], position['y']], dtype=np.uint8),
-            "map": self._map.copy()
+            "map": self._map.copy(),
+            "pos": np.array([position['x'], position['y']], dtype=np.uint8)
             })
 
     """
     Update the narrow representation with the input action
+
+    Place the asset for the specified agent and return a new position by
+    incrementing the horizontal positions from left to right
 
     Parameters:
         agent: an agent id
@@ -152,21 +159,24 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
             return change, x, y
 
         tile_id = action-1
-        change += int(self._map[self._y][self._x] != action-1)
+        change += int(self._map[y][x] != action-1)
         self._map[y][x] = tile_id
 
         # update for the agent's next position
         width, height = self._map.shape[1], self._map.shape[0]
         if self._random_tile:
-            pos['x'] = self._random.randint(width)
-            pos['y'] = self._random.randint(height)
+            x = self._random.randint(width)
+            y = self._random.randint(height)
         else:
-            pos['x'] += 1
-            if pos['x'] >= width:
-                pos['x'] = 0
-                pos['y'] += 1
-                if self._y >= height:
-                    pos['y'] = 0
+            x += 1
+            if x >= width:
+                x = 0
+                y += 1
+                if y >= height:
+                    y = 0
+        # update positions
+        pos['x'] = x
+        pos['y'] = y
         return change, pos['x'], pos['y']
 
     """
