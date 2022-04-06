@@ -26,7 +26,7 @@ def gen_policy(obs_space, act_space):
             }
     return (None, obs_space, act_space, config)
 
-def main():
+def train():
     ray.init(num_cpus=None)
     tune.register_env('MAPcgrl-binary-narrow-v0', lambda config: ParallelPettingZooEnv(env_maker(config)))
 
@@ -40,19 +40,20 @@ def main():
     policies = {f'policy_{agent}': gen_policy(obs_space, action_space) for agent in env.possible_agents}
     config = {
             'env': 'MAPcgrl-binary-narrow-v0',
-                'env_config': {'prob': 'binary', 'num_agents': None, 'binary_actions': True},
-                'num_gpus': 0,
-                'multiagent': {
-                        'policies': policies,
-                        'policy_mapping_fn': policy_mapping_fn
-                    },
-                'model': {},
-                'framework': 'torch'
+            'env_config': {'prob': 'binary', 'num_agents': None, 'binary_actions': True},
+            'num_gpus': 0,
+            'multiagent': {
+                    'policies': policies,
+                    'policy_mapping_fn': policy_mapping_fn
+                },
+            'model': {},
+            'framework': 'torch',
+            'output': 'experiments'
             }
     results = tune.run('PPO', config=config, verbose=1)
 
 
 if __name__ == '__main__':
-    main()
+    train()
     ray.shutdown()
 
