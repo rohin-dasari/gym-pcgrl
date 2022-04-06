@@ -27,6 +27,7 @@ def reset_check(method):
     return _wrapper
 
 
+
 class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     Initialize all parameters
@@ -37,16 +38,27 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     # Note that random tile is set to a default value in the parent class
     # Here, we allow the user to override this value through the random_value parameter
-    def __init__(self, agents, random_tile=False):
+    def __init__(self, agents, tiles, random_tile=False, binary_actions=True):
         super().__init__()
+
+        self.binary_actions = binary_actions
+        if self.binary_actions:
+            assert len(agents) == len(tiles), \
+                    "If you each agent to have isolated control over an " + \
+                    "individual tile type, the number of agents must be " + \
+                    "equal to the number of tiles in the problem"
+
         self.agents = agents
+        self.tiles = tiles
+
+        self.tile_id_map = {tile: i for i, tile in enumerate(self.tiles)}
 
         # instead of storing positions as direct attributes of the class,
         # we need to store them in this dictionary
         # each key corresponds to an unique agent id
         # each value corresponds to that agent's position
-        self._random_tile = random_tile
         self.agent_positions = {}
+        self._random_tile = random_tile
         self._reset = False
 
 
@@ -86,7 +98,8 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         correspond to which value for each tile type
     """
     def get_action_space(self, width, height, num_tiles):
-        return {agent: spaces.Discrete(2) for agent in self.agents}
+        num_actions = 2 if self.binary_actions else len(self.tiles)
+        return {agent: spaces.Discrete(num_actions) for agent in self.tiles}
 
 
     """
@@ -158,8 +171,12 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         if action == 0: # no-op
             return change, x, y
 
-        tile_id = action-1
-        change += int(self._map[y][x] != action-1)
+        #tile_id = action-1
+        if self.binary_actions:
+            tile_id = self.tile_id_map[agent]
+        else:
+            tile_id = action - 1
+        change += int(self._map[y][x] != tile_id)
         self._map[y][x] = tile_id
 
         # update for the agent's next position
@@ -177,7 +194,8 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         # update positions
         pos['x'] = x
         pos['y'] = y
-        return change, pos['x'], pos['y']
+        self.agent_positions[agent] = pos
+        return change, x, y
 
     """
     """

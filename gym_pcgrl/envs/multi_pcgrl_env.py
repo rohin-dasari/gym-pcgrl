@@ -3,11 +3,13 @@ from gym_pcgrl.envs.probs import PROBLEMS
 from gym_pcgrl.envs.reps import REPRESENTATIONS
 from gym_pcgrl.envs.helper import get_int_prob, get_string_map
 
+import functools
 import numpy as np
 import gym
 from gym import spaces
 import PIL
 from pettingzoo import AECEnv
+from pettingzoo.utils import agent_selector
 
 
 
@@ -22,21 +24,31 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         rep (string): the current representation. This name has to be defined in REPRESENTATIONS
         constant in gym_pcgrl.envs.reps.__init__.py
     """
-    # number of agents is determined by the number of game assets
-    # update representation
-    # check reward signal -> for a simple shared signal, do I need to change stuff?
-    # how to define different observations and actions for each agent
-    # assume all agents have same model, assign roles at environment build time
-    def __init__(self, prob="binary", rep="marl_narrow", context=None, rep_kwargs={}, **kwargs):
+    def __init__(
+                self,
+                num_agents=None,
+                prob="binary",
+                rep="marl_narrow",
+                binary_actions=True,
+                context=None,
+                **kwargs
+            ):
 
 
-        self._prob = PROBLEMS['zelda']() # hardcoded problsm
-        self.agents = self._prob.get_tile_types()
-
-        self.possible_agents = self.agents
+        self._prob = PROBLEMS[prob]()
+        tile_types = self._prob.get_tile_types()
+        if binary_actions:
+            self.possible_agents = tile_types
+        else:
+            assert num_agents, "The number of agents must be explicitly provided"
+            self.possible_agents = [i for i in range(num_agents)]
         self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
 
-        self._rep = REPRESENTATIONS['marl_narrow'](self.agents)
+        self._rep = REPRESENTATIONS['marl_narrow'](
+                    self.possible_agents,
+                    tiles=tile_types,
+                    binary_actions=binary_actions
+                )
         self._rep_stats = None
         self._iteration = 0
         self._changes = 0
@@ -46,25 +58,38 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self.seed()
         self.viewer = None
 
-        self.dones = {agent: False for agent in self.agents}
-        self.dones['__all__'] = False
+        self.action_spaces = self._get_action_spaces()
+        self.observation_spaces = self._get_observation_spaces()
 
-        self.action_spaces = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_spaces = self._rep.get_observation_space(
-                self._prob._width,
-                self._prob._height,
-                self.get_num_tiles(),
-                self._max_changes
+
+    """
+    """
+    def _get_observation_spaces(self):
+        return  self._rep.get_observation_space(
+                    self._prob._width,
+                    self._prob._height,
+                    self.get_num_tiles(),
+                    self._max_changes
                 )
 
+    """
+    """
+    def _get_action_spaces(self):
+        return self._rep.get_action_space(
+                    self._prob._width,
+                    self._prob._height,
+                    self.get_num_tiles()
+                )
 
     """
     """
+    @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
         return self.observation_spaces[agent]
 
     """
     """
+    @functools.lru_cache(maxsize=None)
     def action_space(self, agent):
         return self.action_spaces[agent]
 
@@ -72,6 +97,12 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     """
     def get_agent_ids(self):
         return self.agents
+
+    """
+    Returns the observation an agent can currently make
+    """
+    def observe(self, agent):
+        return self._rep.get_observation(agent)
 
 
     """
@@ -81,9 +112,9 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         Observation: the current starting observation have structure defined by
         the Observation Space
     """
-    # return n observations for each agent
-    # does every agent need its own heatmap
     def reset(self):
+        self.agents = self.possible_agents[:]
+
         self._changes = 0
         self._iteration = 0
         tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
@@ -92,12 +123,21 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._prob.reset(self._rep_stats)
         self._heatmaps = self.init_heatmaps()
 
+        self.rewards = {agent: 0 for agent in self.agents}
+        self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.dones = {agent: False for agent in self.agents}
         self.dones['__all__'] = False
+        self.infos = {agent: {} for agent in self.agents}
+        self.state = {agent: None for agent in self.agents}
 
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
             obs["heatmap"] = self._heatmaps[agent].copy()
+
+        self._agent_selector = agent_selector(self.agents)
+        self.agent_selection = self._agent_selector.next()
+        self.updates = []
+        self.observations = observations
         return observations
 
     """
@@ -161,16 +201,13 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         common_info["changes"] = self._changes
         common_info["max_iterations"] = self._max_iterations
         common_info["max_changes"] = self._max_changes
-        info = {}
+        info = {agent: {} for agent in self.agents}
         info['__common__'] = {'metadata': common_metadata, **common_info}
-        for agent in self.agents:
-            info[agent] = {}
 
         #return the values
         return observations, rewards, dones, info
 
     """
-
     """
     def update_heatmap(self, agent, update):
         change, x, y = update
@@ -216,10 +253,5 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._max_iterations = self._max_changes * self._prob._width * self._prob._height
         self._prob.adjust_param(**kwargs)
         self._rep.adjust_param(**kwargs)
-        self.action_spaces = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_spaces = self._rep.get_observation_space(
-                self._prob._width,
-                self._prob._height,
-                self.get_num_tiles(),
-                self._max_changes
-                )
+        self.action_spaces = self._get_action_spaces()
+        self.observation_spaces = self._get_observation_spaces()

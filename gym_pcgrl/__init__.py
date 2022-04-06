@@ -11,8 +11,10 @@ for prob in PROBLEMS.keys():
             kwargs={"prob": prob, "rep": rep}
         )
 
-register(
-            id='MAPcgrl-zelda-narrow-v0',
+        register(
+            id='MAPcgrl-{}-{}-v0'.format(prob, rep),
             entry_point='gym_pcgrl.envs.multi_pcgrl_env:MAPcgrlEnv',
-            kwargs={'prob': 'zelda'}
+            kwargs={"prob": prob, "rep": rep}
         )
+
+

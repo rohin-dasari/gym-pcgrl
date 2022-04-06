@@ -19,7 +19,7 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
                  model_config,
                  name,
                  conv_filters=64,
-                 fc_size=64,
+                 fc_size=32,
                  ):
         nn.Module.__init__(self)
         super().__init__(obs_space, action_space, num_outputs, model_config,
@@ -27,8 +27,8 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
 
         # self.obs_size = get_preprocessor(obs_space)(obs_space).size
         obs_shape = obs_space.shape # observation space is flattened
-        #raise Exception(f'{obs_space}')
-        self.pre_fc_size = (7 - 2) * (11 - 2) * conv_filters
+        #self.pre_fc_size = (7 - 2) * (11 - 2) * conv_filters
+        self.pre_fc_size = 1600
         self.fc_size = fc_size
 
         # TODO: use more convolutions here? Change and check that we can still overfit on binary problem.
@@ -49,6 +49,7 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
         input = input_dict["obs"].permute(0, 3, 1, 2)  # Because rllib order tensors the tensorflow way (channel last)
         x = nn.functional.relu(self.conv_1(input.float()))
         x = x.reshape(x.size(0), -1)
+        #raise ValueError(f'{x.shape}, {self.fc_size}, {self.pre_fc_size}')
         x = nn.functional.relu(self.fc_1(x))
         self._features = x
         action_out = self.action_branch(self._features)
