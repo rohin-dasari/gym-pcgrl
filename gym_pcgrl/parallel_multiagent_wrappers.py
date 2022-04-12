@@ -178,8 +178,8 @@ The wrappers we use for narrow and turtle experiments
 """
 class MARL_CroppedImagePCGRLWrapper(gym.Wrapper):
     def __init__(self, game, crop_size, **kwargs):
-        self.pcgrl_env = gym.make(game)
-        self.pcgrl_env.adjust_param(**kwargs)
+        self.pcgrl_env = gym.make(game, **kwargs)
+        #self.pcgrl_env.adjust_param(**kwargs)
         # Cropping the map to the correct crop_size
         env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
         # Transform to one hot encoding if not binary

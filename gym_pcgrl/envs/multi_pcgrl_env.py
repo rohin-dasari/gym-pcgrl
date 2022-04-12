@@ -24,6 +24,7 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         rep (string): the current representation. This name has to be defined in REPRESENTATIONS
         constant in gym_pcgrl.envs.reps.__init__.py
     """
+    metadata = {'render.modes': ['human', 'rgb_array']}
     def __init__(
                 self,
                 num_agents=None,
@@ -44,7 +45,7 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
             self.possible_agents = [i for i in range(num_agents)]
         self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
 
-        self._rep = REPRESENTATIONS['marl_narrow'](
+        self._rep = REPRESENTATIONS[rep](
                     self.possible_agents,
                     tiles=tile_types,
                     binary_actions=binary_actions
@@ -255,3 +256,27 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._rep.adjust_param(**kwargs)
         self.action_spaces = self._get_action_spaces()
         self.observation_spaces = self._get_observation_spaces()
+
+    """
+    Render the current state of the environment
+
+    Parameters:
+        mode (string): the value has to be defined in render.modes in metadata
+
+    Returns:
+        img or boolean: img for rgb_array rendering and boolean for human rendering
+    """
+    def render(self, mode='human'):
+        tile_size=16
+        img = self._prob.render(get_string_map(self._rep._map, self._prob.get_tile_types()))
+        img = self._rep.render(img, self._prob._tile_size, self._prob._border_size).convert("RGB")
+        if mode == 'rgb_array':
+            return img
+        elif mode == 'human':
+            from gym.envs.classic_control import rendering
+            if self.viewer is None:
+                self.viewer = rendering.SimpleImageViewer()
+            if not hasattr(img, 'shape'):
+                img = np.array(img)
+            self.viewer.imshow(img)
+            return self.viewer.isopen

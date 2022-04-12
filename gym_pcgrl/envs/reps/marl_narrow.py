@@ -38,7 +38,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     # Note that random tile is set to a default value in the parent class
     # Here, we allow the user to override this value through the random_value parameter
-    def __init__(self, agents, tiles, random_tile=False, binary_actions=True):
+    def __init__(self, agents, tiles, random_tile=True, binary_actions=True):
         super().__init__()
 
         self.binary_actions = binary_actions
@@ -99,7 +99,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     def get_action_space(self, width, height, num_tiles):
         num_actions = 2 if self.binary_actions else len(self.tiles)
-        return {agent: spaces.Discrete(num_actions) for agent in self.tiles}
+        return {agent: spaces.Discrete(num_actions) for agent in self.agents}
 
 
     """

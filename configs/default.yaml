@@ -1,0 +1,8 @@
+env: MAPcgrl-binary-narrow-v0
+env_config:
+    prob: binary
+    num_agents: null
+    binary_actions: true
+num_gpus: 0
+framrwork: torch
+output: experiments
