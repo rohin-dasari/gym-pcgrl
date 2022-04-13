@@ -98,7 +98,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         correspond to which value for each tile type
     """
     def get_action_space(self, width, height, num_tiles):
-        num_actions = 2 if self.binary_actions else len(self.tiles)
+        num_actions = 2 if self.binary_actions else len(self.tiles) + 1
         return {agent: spaces.Discrete(num_actions) for agent in self.agents}
 
 

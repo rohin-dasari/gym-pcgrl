@@ -1,0 +1,18 @@
+# Rllib trainer config
+env: MAPcgrl-binary-narrow-v0
+env_config:
+    binary_actions: True
+num_gpus: 2
+framework: torch
+output: experiments
+render_env: false
+####################
+# Tune API parameters
+training_iterations: 25000
+checkpoint_at_end: true
+checkpoint_freqL: 1000
+####################
+# model config
+model_config: 
+    custom_model: CustomFeedForwardModel
+####################

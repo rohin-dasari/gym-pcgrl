@@ -116,7 +116,7 @@ class BinaryProblem(Problem):
     Returns:
         boolean: True if the level reached satisfying quality based on the stats and False otherwise
     """
-    def get_episode_over(self, new_stats, old_stats):
+    def get_episode_over(self, new_stats):
         return new_stats["regions"] == 1 and new_stats["path-length"] - self._start_stats["path-length"] >= self._target_path
 
     """

@@ -15,56 +15,25 @@ from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 
 
 from gym_pcgrl.models import CustomFeedForwardModel as Model
+from gym_pcgrl.utils import parse_config
 
 
-def env_maker(config):
-    return MARL_CroppedImagePCGRLWrapper('MAPcgrl-binary-narrow-v0', 28, **config)
-
-def gen_policy(obs_space, act_space):
-    config = {
-            'model': {'custom_model': 'CustomFeedForwardModel'},
-            'gamma': 0.95
-            }
-    return (None, obs_space, act_space, config)
-
-# convert train function to load config from config path
-def train():
-    ray.init(num_cpus=None)
-    tune.register_env('MAPcgrl-binary-narrow-v0', lambda config: ParallelPettingZooEnv(env_maker(config)))
-
-    env_config = {'num_agents': None, 'binary_actions': True}
-    env = env_maker(env_config)
-    sample_agent = env.possible_agents[0]
-    obs_space = env.observation_spaces[sample_agent]
-    action_space = env.action_spaces[sample_agent]
-    ModelCatalog.register_custom_model('CustomFeedForwardModel', Model)
-
-    policy_mapping_fn = lambda agent: f'policy_{agent}'
-
-    policies = {f'policy_{agent}': gen_policy(obs_space, action_space) for agent in env.possible_agents}
-    config = {
-            'env': 'MAPcgrl-binary-narrow-v0',
-            'env_config': env_config,
-            'num_gpus': 0,
-            'multiagent': {
-                    'policies': policies,
-                    'policy_mapping_fn': policy_mapping_fn
-                },
-            'framework': 'torch',
-            'output': 'experiments',
-            'render_env': True
-            }
+def train(config_path):
+    config = parse_config(config_path)
     # 25000 training iterations = 100M timesteps
     results = tune.run(
             'PPO',
             config=config,
-            stop={'training_iteration': 25000},
+            #stop={'training_iteration': 25000},
+            stop={'training_iteration': 4},
             checkpoint_at_end=True,
-            checkpoint_freq=1000
+            #checkpoint_freq=1000
+            checkpoint_freq=1
             )
 
 
 if __name__ == '__main__':
-    train()
-    ray.shutdown()
+    #config_path = 'configs/binary_actions_maze.yaml'
+    config_path = 'configs/full_actions_maze.yaml'
+    train(config_path)
 

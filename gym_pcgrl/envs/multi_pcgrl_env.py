@@ -233,9 +233,12 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     """
     def check_done(self, new_stats, old_stats):
 
-        return self._prob.get_episode_over(new_stats, old_stats) or \
+        return self.check_success() or \
                 self._changes >= self._max_changes or \
                 self._iteration >= self._max_iterations
+
+    def check_success(self):
+        return self._prob.get_episode_over(self._rep_stats)
 
     """
     Adjust the used parameters by the problem or representation
