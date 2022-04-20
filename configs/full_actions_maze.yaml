@@ -5,7 +5,6 @@ env_config:
     binary_actions: False
 num_gpus: 0
 framework: torch
-output: experiments
 render_env: false
 ####################
 # Tune API parameters

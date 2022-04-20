@@ -168,16 +168,14 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         change = 0
         pos = self.agent_positions[agent]
         x, y = pos['x'], pos['y']
-        if action == 0: # no-op
-            return change, x, y
 
-        #tile_id = action-1
-        if self.binary_actions:
-            tile_id = self.tile_id_map[agent]
-        else:
-            tile_id = action - 1
-        change += int(self._map[y][x] != tile_id)
-        self._map[y][x] = tile_id
+        if action != 0:
+            if self.binary_actions:
+                tile_id = self.tile_id_map[agent]
+            else:
+                tile_id = action - 1
+            change += int(self._map[y][x] != tile_id)
+            self._map[y][x] = tile_id
 
         # update for the agent's next position
         width, height = self._map.shape[1], self._map.shape[0]
@@ -207,3 +205,41 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
             updates.append(update)
         return updates
 
+
+    def draw_rect(self, tile_size, color):
+        x_graphics = Image.new("RGBA", (tile_size,tile_size), (0,0,0,0))
+        for x in range(tile_size):
+            x_graphics.putpixel((0,x), color)
+            x_graphics.putpixel((1,x), color)
+            x_graphics.putpixel((tile_size-2,x), color)
+            x_graphics.putpixel((tile_size-1,x), color)
+        for y in range(tile_size):
+            x_graphics.putpixel((y,0), color)
+            x_graphics.putpixel((y,1), color)
+            x_graphics.putpixel((y,tile_size-2), color)
+            x_graphics.putpixel((y,tile_size-1), color)
+        return x_graphics
+
+
+    """
+    Modify the level image with a red rectangle around the tile that is
+    going to be modified
+
+    Parameters:
+        lvl_image (img): the current level_image without modifications
+        tile_size (int): the size of tiles in pixels used in the lvl_image
+        border_size ((int,int)): an offeset in tiles if the borders are not part of the level
+
+    Returns:
+        img: the modified level image
+    """
+    def render(self, lvl_image, tile_size, border_size):
+        colors = [(255, 0, 0, 255), (0, 255, 0, 255)] # expand to handle more agents
+        for color, agent in zip(colors, self.agents):
+            rect = self.draw_rect(tile_size, color)
+            x_pos = (self.agent_positions[agent]['x']+border_size[0])*tile_size
+            x_pos_width = (self.agent_positions[agent]['x']+border_size[0]+1)*tile_size
+            y_pos = (self.agent_positions[agent]['y']+border_size[1])*tile_size
+            y_pos_height = (self.agent_positions[agent]['y']+border_size[1]+1)*tile_size
+            lvl_image.paste(rect, (x_pos, y_pos, x_pos_width, y_pos_height), rect)
+        return lvl_image

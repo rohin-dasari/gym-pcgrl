@@ -2,7 +2,7 @@
 env: MAPcgrl-binary-narrow-v0
 env_config:
     binary_actions: True
-num_gpus: 2
+num_gpus: 0
 framework: torch
 output: experiments
 render_env: false

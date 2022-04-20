@@ -45,6 +45,7 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
         self.conv_3 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=stride, padding=0)
         
 
+        #self.fc_1 = SlimFC(1024, 512)
         self.fc_1 = SlimFC(256, self.fc_size)
         #self.fc_1 = SlimFC(self.pre_fc_size, self.fc_size)
         self.action_branch = SlimFC(self.fc_size, num_outputs)

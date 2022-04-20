@@ -53,7 +53,6 @@ def parse_config(config_file):
             'env_config': config['env_config'],
             'num_gpus': config['num_gpus'],
             'framework': config['framework'],
-            'output': config['output'],
             'render_env': config['render_env'],
             'multiagent': {
                 'policies': policies,
