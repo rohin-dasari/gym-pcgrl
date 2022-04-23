@@ -199,7 +199,7 @@ class SokobanProblem(Problem):
         dict(any,any): is a debug information that can be used to debug what is
         happening in the problem
     """
-    def get_debug_info(self, new_stats, old_stats):
+    def get_debug_info(self, new_stats):
         return {
             "player": new_stats["player"],
             "crate": new_stats["crate"],

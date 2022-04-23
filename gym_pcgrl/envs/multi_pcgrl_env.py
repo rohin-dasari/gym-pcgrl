@@ -31,7 +31,6 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
                 prob="binary",
                 rep="marl_narrow",
                 binary_actions=True,
-                context=None,
                 **kwargs
             ):
 
@@ -48,7 +47,8 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._rep = REPRESENTATIONS[rep](
                     self.possible_agents,
                     tiles=tile_types,
-                    binary_actions=binary_actions
+                    binary_actions=binary_actions,
+                    random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False
                 )
         self._rep_stats = None
         self._iteration = 0
@@ -196,7 +196,7 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
 
 
         # collect metadata
-        common_metadata = self._prob.get_debug_info(new_stats, old_stats)
+        common_metadata = self._prob.get_debug_info(new_stats)
         common_info = {}
         common_info["iterations"] = self._iteration
         common_info["changes"] = self._changes
@@ -207,6 +207,9 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
 
         #return the values
         return observations, rewards, dones, info
+
+    def get_info(self):
+        return self._prob.get_debug_info(self._rep_stats)
 
     """
     """

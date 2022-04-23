@@ -37,6 +37,8 @@ def get_agent_actions(trainer, observations, policy_mapping_fn):
 def rollout(env, trainer, policy_mapping_fn, render=True):
     done = False
     obs = env.reset()
+    imageio.imsave('initial_img.png', env.render(mode='rgb_array'))
+    print(env.get_info())
     frames = []
     while not done:
         actions = get_agent_actions(trainer, obs, policy_mapping_fn)
@@ -44,10 +46,10 @@ def rollout(env, trainer, policy_mapping_fn, render=True):
         frame = env.render(mode='rgb_array')
         frames.append(frame)
         done = done['__all__']
-    return {
-            'success': env.check_success(),
-            'frames': frames, 
-            }
+    print(env.get_info())
+    imageio.mimsave('animation.gif', frames)
+    imageio.imsave('final_img.png', frame)
+    return env.check_success()
 
 
 def checkpoints_iter(experiment_path):
@@ -62,7 +64,9 @@ def get_best_checkpoint(experiment_path, config):
     max_episode_reward = float('-inf')
     max_checkpoint = None
     for checkpoint in checkpoints_iter(experiment_path):
-        checkpoint_name = list(Path(checkpoint).glob('*checkpoint-[0-9]'))[0]
+        # get number after underscore in checkpoint
+        checkpoint_num = checkpoint.name.split('_')[1].lstrip('0')
+        checkpoint_name = Path(checkpoint, f'checkpoint-{checkpoint_num}')
         trainer = restore_trainer(checkpoint_name, config)
         timestep = trainer._timesteps_total
         # look up timestep in progress dataframe
@@ -83,16 +87,17 @@ def get_success_rate(config, experiment_path,  n_trials=40):
     env = build_env(config['env'], config['env_config'])
     policy_mapping_fn = config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
-        results = rollout(env, trainer, policy_mapping_fn)
-        n_success += int(results['success'])
+        success = rollout(env, trainer, policy_mapping_fn)
+        n_success += int(success)
         print(n_success)
-        imageio.mimsave('animation.gif', results['frames'])
         # save renderings in experiment path
 
 #config_path = 'configs/full_actions_maze.yaml'
 config_path = 'configs/binary_actions_maze.yaml'
 config = parse_config(config_path)
+config['env_config']['random_tile'] = False
 config['explore'] = False
-experiment_path = '/home/rohindasari/ray_results/PPOTrainer_MAPcgrl-binary-narrow-v0_2022-04-20_14-36-22sbcpie2f'
+#experiment_path = '/home/rohindasari/ray_results/PPOTrainer_MAPcgrl-binary-narrow-v0_2022-04-20_14-36-22sbcpie2f'
+experiment_path = '/home/rohindasari/ray_results/PPO_MAPcgrl-binary-narrow-v0_bfde2_00000_0_2022-04-20_17-20-49'
 get_success_rate(config, experiment_path, n_trials=1)
 

@@ -171,7 +171,7 @@ class SMBProblem(Problem):
     def get_episode_over(self, new_stats, old_stats):
         return new_stats["dist-win"] <= 0
 
-    def get_debug_info(self, new_stats, old_stats):
+    def get_debug_info(self, new_stats):
         return {
             "dist-floor": new_stats["dist-floor"],
             "disjoint-tubes": new_stats["disjoint-tubes"],
