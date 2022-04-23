@@ -99,5 +99,8 @@ config['env_config']['random_tile'] = False
 config['explore'] = False
 #experiment_path = '/home/rohindasari/ray_results/PPOTrainer_MAPcgrl-binary-narrow-v0_2022-04-20_14-36-22sbcpie2f'
 experiment_path = '/home/rohindasari/ray_results/PPO_MAPcgrl-binary-narrow-v0_bfde2_00000_0_2022-04-20_17-20-49'
-get_success_rate(config, experiment_path, n_trials=1)
+change_percentages = np.arange(0, 11)/10
+for perc in change_percentages:
+    config['env_config']['change_percentage'] = perc
+    get_success_rate(config, experiment_path, n_trials=1)
 

@@ -31,6 +31,7 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
                 prob="binary",
                 rep="marl_narrow",
                 binary_actions=True,
+                change_percentage=0.2,
                 **kwargs
             ):
 
@@ -53,7 +54,7 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self._rep_stats = None
         self._iteration = 0
         self._changes = 0
-        self._max_changes = max(int(0.2 * self._prob._width * self._prob._height), 1)
+        self._max_changes = max(int(change_percentage * self._prob._width * self._prob._height), 1)
         self._max_iterations = self._max_changes * self._prob._width * self._prob._height
 
         self.seed()
