@@ -1,6 +1,7 @@
 """
 Run a trained agent and get generated maps
 """
+from pathlib import Path
 import model
 from stable_baselines import PPO2
 
@@ -26,18 +27,30 @@ def infer(game, representation, model_path, **kwargs):
 
     agent = PPO2.load(model_path)
     env = make_vec_envs(env_name, representation, None, 1, **kwargs)
-    obs = env.reset()
-    obs = env.reset()
-    dones = False
+    evaldir = Path('eval')
+    evaldir.mkdir(exist_ok=True)
     for i in range(kwargs.get('trials', 1)):
+        obs = env.reset()
+        frames = []
+        infos = []
+        actions = []
+        dones = False
+        frames.append(env.render(mode='rgb_array'))
         while not dones:
             action, _ = agent.predict(obs)
             obs, _, dones, info = env.step(action)
+            frames.append(env.render(mode='rgb_array'))
             if kwargs.get('verbose', False):
                 print(info[0])
             if dones:
                 break
+        success = env.check_success()
         time.sleep(0.2)
+
+    # save success
+    # save frames
+    # save actions
+    # save
 
 ################################## MAIN ########################################
 game = 'binary'

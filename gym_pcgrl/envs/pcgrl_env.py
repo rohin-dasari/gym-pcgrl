@@ -149,6 +149,9 @@ class PcgrlEnv(gym.Env):
         #return the values
         return observation, reward, done, info
 
+    def check_success(self):
+        return self._prob.get_episode_over(self._rep_stats)
+
     """
     Render the current state of the environment
 

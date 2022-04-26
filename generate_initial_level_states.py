@@ -16,7 +16,7 @@ def build_level(prob_name):
 def save_level(level, prob, level_id):
     # create directory structure
     # ./{prob}_levels/{1}/level.txt
-    output_path = Path(f'./{prob}_levels')
+    output_path = Path(f'{prob}_levels')
     output_path.mkdir(exist_ok=True)
     with open(Path(output_path, f'level_{level_id}.txt'), 'w+') as f:
         np.savetxt(f, level)
