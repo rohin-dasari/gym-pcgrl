@@ -25,8 +25,8 @@ class NarrowRepresentation(Representation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
-        super().reset(width, height, prob)
+    def reset(self, width, height, prob, initial_level=None):
+        super().reset(width, height, prob, initial_level)
         self._x = self._random.randint(width)
         self._y = self._random.randint(height)
 

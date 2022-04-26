@@ -37,8 +37,11 @@ class Representation:
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
-        if self._random_start or self._old_map is None:
+    def reset(self, width, height, prob, initial_level=None):
+        if initial_level is not None:
+            # maybe validate the level?
+            self._map = initial_level
+        elif self._random_start or self._old_map is None:
             self._map = gen_random_map(self._random, width, height, prob)
             self._old_map = self._map.copy()
         else:

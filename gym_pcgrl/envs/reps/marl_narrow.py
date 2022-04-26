@@ -70,9 +70,9 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
+    def reset(self, width, height, prob, initial_level=None):
         self._reset = True
-        super().reset(width, height, prob)
+        super().reset(width, height, prob, initial_level)
         # initialize starting position for each agent
         # there is a unique agent for each tile type
         self.agent_positions = {}

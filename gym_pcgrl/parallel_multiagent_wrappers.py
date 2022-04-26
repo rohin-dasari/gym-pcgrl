@@ -10,7 +10,7 @@ from gym_pcgrl.wrapper_utils import get_env
 MAPCGRL_ENV = 'MAPcgrlEnv'
 
 #get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
-get_mapcgrl_obj = lambda env: env if "PcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
+get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
 
 class MARL_Cropped_Parallel(gym.Wrapper):
     def __init__(self, game, crop_size, pad_value, name, **kwargs):
@@ -51,7 +51,6 @@ class MARL_Cropped_Parallel(gym.Wrapper):
         for agent in self.env.possible_agents:
             obs_spaces[agent] = obs_space
         self.observation_spaces = obs_spaces
-
 
         
     def step(self, action_dict):
@@ -181,13 +180,27 @@ class MARL_CroppedImagePCGRLWrapper(gym.Wrapper):
         self.pcgrl_env = gym.make(game, **kwargs)
         #self.pcgrl_env.adjust_param(**kwargs)
         # Cropping the map to the correct crop_size
-        env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
+        envs = []
+        cropped_env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
+        envs.append(cropped_env)
         # Transform to one hot encoding if not binary
         if 'binary' not in game:
-            env = MARL_OneHotEncoding_Parallel(env, 'map')
+            onehot_env = MARL_OneHotEncoding_Parallel(env, 'map')
+            envs.append(onehot_env)
         ## Indices for flatting
         flat_indices = ['map']
         ### Final Wrapper has to be ToImage or ToFlat
-        self.env = MARL_ToImage_Parallel(env, flat_indices)
+        toimage_env = MARL_ToImage_Parallel(envs[-1], flat_indices)
+        envs.append(toimage_env)
+        self.env = toimage_env
+        self.envs = envs
         super().__init__(self.env)
+
+    def transform_observations(self, observations):
+        return {agent: self.transform(obs) for agent, obs in observations.items()}
+
+    def transform(self, obs):
+        for env in self.envs:
+            obs = env.transform(obs)
+        return obs
 

@@ -39,4 +39,5 @@ runs/
 
 # saved vim sessions
 *.vim*
+eval/
 

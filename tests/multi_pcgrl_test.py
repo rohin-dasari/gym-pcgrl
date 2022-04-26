@@ -13,7 +13,10 @@ from gym_pcgrl.parallel_multiagent_wrappers import MARL_CroppedImagePCGRLWrapper
 from ray.rllib.agents.ppo import PPOTrainer
 from ray.rllib.env.wrappers.pettingzoo_env import ParallelPettingZooEnv
 
-
+@pytest.fixture
+def env():
+    env = gym.make('MAPcgrl-binary-narrow-v0', num_agents=None, binary_actions=True)
+    return env
 
 """
 test to ensure that a new position is returned every time by the environment
@@ -72,31 +75,56 @@ def test_apply_action():
 
 
 
-"""
-There are three possible conditions that can lead to a finished environment:
-    changes >= max_changes
-    iterations => max_iterations
-    level reaches satisfiable quality
-"""
-def test_done_conditions():
-    pass
+def test_set_map(env):
+    from gym_pcgrl.envs.reps.representation import Representation
+    from gym_pcgrl.envs.probs import PROBLEMS
+    from gym_pcgrl.envs.helper import get_int_prob, get_string_map
+    import numpy as np
+
+    prob_name = 'binary'
+    rep = Representation()
+    prob = PROBLEMS[prob_name]()
+    tile_probs = get_int_prob(prob._prob, prob.get_tile_types())
+    rep.reset(prob._width, prob._height, tile_probs)
+    level = rep._map
+
+    init_obs = env.reset(initial_level=level)
+    np.testing.assert_equal(level, env.get_map())
 
 
-def test_reward():
-    env = gym.make('MAPcgrl-binary-narrow-v0', num_agents=None, binary_actions=True)
+def test_human_actions(env):
     init_obs = env.reset()
-    empty_pos = init_obs['empty']['pos']
-    solid_pos = init_obs['solid']['pos']
-    # check that the map state observed by both agents is the same
-    assert (init_obs['empty']['map'] == init_obs['solid']['map']).all()
-
-    # check that the agents rewards 
-
-def test_update_heatmap():
-    pass
-
-
-def test_agent_action():
-    pass
+    tile = 'empty'
+    action = 1
+    #action = env.get_human_action(tile, action)
+    action = env.get_human_action(tile, action)
+    assert action == f'place {tile}'
+    print(action)
+#"""
+#There are three possible conditions that can lead to a finished environment:
+#    changes >= max_changes
+#    iterations => max_iterations
+#    level reaches satisfiable quality
+#"""
+#def test_done_conditions():
+#    pass
+#
+#
+#def test_reward():
+#    env = gym.make('MAPcgrl-binary-narrow-v0', num_agents=None, binary_actions=True)
+#    init_obs = env.reset()
+#    empty_pos = init_obs['empty']['pos']
+#    solid_pos = init_obs['solid']['pos']
+#    # check that the map state observed by both agents is the same
+#    assert (init_obs['empty']['map'] == init_obs['solid']['map']).all()
+#
+#    # check that the agents rewards 
+#
+#def test_update_heatmap():
+#    pass
+#
+#
+#def test_agent_action():
+#    pass
 
 

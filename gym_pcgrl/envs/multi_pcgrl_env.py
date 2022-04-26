@@ -38,6 +38,8 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
 
         self._prob = PROBLEMS[prob]()
         tile_types = self._prob.get_tile_types()
+        self.tile_types = tile_types
+        self.binary_actions = binary_actions
         if binary_actions:
             self.possible_agents = tile_types
         else:
@@ -63,6 +65,18 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         self.action_spaces = self._get_action_spaces()
         self.observation_spaces = self._get_observation_spaces()
 
+
+    """
+    convert an integer action id to a human readable action
+    """
+    def get_human_action(self, agent, action):
+        if action == 0:
+            return 'no-op'
+        if self.binary_actions:
+            return f'place {agent}'
+        else:
+            tile_id = action - 1
+            return f'place {self.tile_types[tile_id]}'
 
     """
     """
@@ -104,7 +118,26 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
     Returns the observation an agent can currently make
     """
     def observe(self, agent):
-        return self._rep.get_observation(agent)
+        observation = self._rep.get_observation(agent)
+        observation["heatmap"] = self._heatmaps[agent].copy()
+        return observation
+
+    def get_map(self):
+        return self._rep._map
+
+    def get_agent_positions(self):
+        return self._rep.agent_positions
+
+    def set_map(self, initial_level=None, pos=None):
+        tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
+        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level)
+        if pos is not None:
+            self._rep.agent_positions = pos
+        observations = self._rep.get_observations()
+        for agent, obs in observations.items():
+            obs["heatmap"] = self._heatmaps[agent].copy()
+        self.observations = observations
+        return observations
 
 
     """
@@ -114,16 +147,21 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         Observation: the current starting observation have structure defined by
         the Observation Space
     """
-    def reset(self):
+    def get_iteration(self):
+        return self._iteration
+
+    def reset(self, initial_level=None):
         self.agents = self.possible_agents[:]
 
         self._changes = 0
         self._iteration = 0
+        self._heatmaps = self.init_heatmaps()
+        #self.set_map()
         tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
-        self._rep.reset(self._prob._width, self._prob._height, tile_probs)
+        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level)
+        #observations = self.set_map(initial_level)
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
-        self._heatmaps = self.init_heatmaps()
 
         self.rewards = {agent: 0 for agent in self.agents}
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
@@ -136,9 +174,10 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         for agent, obs in observations.items():
             obs["heatmap"] = self._heatmaps[agent].copy()
 
-        self._agent_selector = agent_selector(self.agents)
-        self.agent_selection = self._agent_selector.next()
-        self.updates = []
+        # only necessary for nonparallel environments
+        #self._agent_selector = agent_selector(self.agents)
+        #self.agent_selection = self._agent_selector.next()
+        #self.updates = []
         self.observations = observations
         return observations
 
@@ -180,8 +219,9 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
 
         # get next state
         observations = self._rep.get_observations()
-        for agent in self._heatmaps:
-            observations[agent]["heatmap"] = self._heatmaps[agent].copy()
+        for agent, obs in observations.items():
+            obs["heatmap"] = self._heatmaps[agent].copy()
+        self.observations = observations
 
         # compute reward
         # assume shared reward signal
@@ -236,7 +276,6 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
         old_stats: stats regarding the representation from the previous timestep
     """
     def check_done(self, new_stats, old_stats):
-
         return self.check_success() or \
                 self._changes >= self._max_changes or \
                 self._iteration >= self._max_iterations
