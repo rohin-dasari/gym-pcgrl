@@ -1,5 +1,5 @@
 # Rllib trainer config
-env: MAPcgrl-binary-narrow-v0
+env: Parallel_MAPcgrl-binary-narrow-v0
 env_config:
     num_agents: 2
     binary_actions: False
@@ -7,7 +7,7 @@ num_gpus: 0
 framework: torch
 render_env: false
 ####################
-# Tune API parameters
+# Tune API parameters -> currently not accounted for when loading config
 training_iterations: 25000
 checkpoint_at_end: true
 checkpoint_freqL: 1000

@@ -2,6 +2,7 @@ from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
 from gym_pcgrl.envs.probs import PROBLEMS
 from gym_pcgrl.envs.reps import REPRESENTATIONS
 from gym_pcgrl.envs.helper import get_int_prob, get_string_map
+from .parallel_multi_pcgrl_env import Parallel_MAPcgrlEnv
 
 import functools
 import numpy as np
@@ -12,19 +13,7 @@ from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector
 
 
-
-"Multi-agent PCGRL Gym Environment"
-class MAPcgrlEnv(PcgrlEnv, AECEnv):
-    """
-    Constructor for the interface.
-
-    Parameters:
-        prob (string): the current problem. This name has to be defined in PROBLEMS
-        constant in gym_pcgrl.envs.probs.__init__.py file
-        rep (string): the current representation. This name has to be defined in REPRESENTATIONS
-        constant in gym_pcgrl.envs.reps.__init__.py
-    """
-    metadata = {'render.modes': ['human', 'rgb_array']}
+class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
     def __init__(
                 self,
                 num_agents=None,
@@ -34,295 +23,96 @@ class MAPcgrlEnv(PcgrlEnv, AECEnv):
                 change_percentage=0.2,
                 **kwargs
             ):
+        # inherit all methods from Parallel_MAPcgrlEnv
+        super().__init__(num_agents, prob, rep, binary_actions, change_percentage, **kwargs)
 
 
-        self._prob = PROBLEMS[prob]()
-        tile_types = self._prob.get_tile_types()
-        self.tile_types = tile_types
-        self.binary_actions = binary_actions
-        if binary_actions:
-            self.possible_agents = tile_types
-        else:
-            assert num_agents, "The number of agents must be explicitly provided"
-            self.possible_agents = [i for i in range(num_agents)]
-        self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
+    def observe_current_agent(self):
+        return self.observe(self.agent_selection)
 
-        self._rep = REPRESENTATIONS[rep](
-                    self.possible_agents,
-                    tiles=tile_types,
-                    binary_actions=binary_actions,
-                    random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False
-                )
-        self._rep_stats = None
-        self._iteration = 0
-        self._changes = 0
-        self._max_changes = max(int(change_percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+    def reset(self, initial_level=None, initial_positions=None):
+        # call super's init
+        obs = super().reset(initial_level, initial_positions)
+        # set agent selector
+        self._agent_selector = agent_selector(self.agents)
+        self.agent_selection = self._agent_selector.next()
+        return self.observe_current_agent()
 
-        self.seed()
-        self.viewer = None
+    def step(self, action):
+        agent = self.agent_selection
+        if self.dones[agent]:
+            return self._was_done_step(action)
 
-        self.action_spaces = self._get_action_spaces()
-        self.observation_spaces = self._get_observation_spaces()
-
-
-    """
-    convert an integer action id to a human readable action
-    """
-    def get_human_action(self, agent, action):
-        if action == 0:
-            return 'no-op'
-        if self.binary_actions:
-            return f'place {agent}'
-        else:
-            tile_id = action - 1
-            return f'place {self.tile_types[tile_id]}'
-
-    """
-    """
-    def _get_observation_spaces(self):
-        return  self._rep.get_observation_space(
-                    self._prob._width,
-                    self._prob._height,
-                    self.get_num_tiles(),
-                    self._max_changes
-                )
-
-    """
-    """
-    def _get_action_spaces(self):
-        return self._rep.get_action_space(
-                    self._prob._width,
-                    self._prob._height,
-                    self.get_num_tiles()
-                )
-
-    """
-    """
-    @functools.lru_cache(maxsize=None)
-    def observation_space(self, agent):
-        return self.observation_spaces[agent]
-
-    """
-    """
-    @functools.lru_cache(maxsize=None)
-    def action_space(self, agent):
-        return self.action_spaces[agent]
-
-    """
-    """
-    def get_agent_ids(self):
-        return self.agents
-
-    """
-    Returns the observation an agent can currently make
-    """
-    def observe(self, agent):
-        observation = self._rep.get_observation(agent)
-        observation["heatmap"] = self._heatmaps[agent].copy()
-        return observation
-
-    def get_map(self):
-        return self._rep._map
-
-    def get_agent_positions(self):
-        return self._rep.agent_positions
-
-    def set_map(self, initial_level=None, pos=None):
-        tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
-        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level)
-        if pos is not None:
-            self._rep.agent_positions = pos
-        observations = self._rep.get_observations()
-        for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
-        self.observations = observations
-        return observations
-
-
-    """
-    Resets the environment to the start state
-
-    Returns:
-        Observation: the current starting observation have structure defined by
-        the Observation Space
-    """
-    def get_iteration(self):
-        return self._iteration
-
-    def reset(self, initial_level=None):
-        self.agents = self.possible_agents[:]
-
-        self._changes = 0
-        self._iteration = 0
-        self._heatmaps = self.init_heatmaps()
-        #self.set_map()
-        tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
-        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level)
-        #observations = self.set_map(initial_level)
-        self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-        self._prob.reset(self._rep_stats)
-
-        self.rewards = {agent: 0 for agent in self.agents}
-        self._cumulative_rewards = {agent: 0 for agent in self.agents}
-        self.dones = {agent: False for agent in self.agents}
-        self.dones['__all__'] = False
-        self.infos = {agent: {} for agent in self.agents}
-        self.state = {agent: None for agent in self.agents}
-
-        observations = self._rep.get_observations()
-        for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
-
-        # only necessary for nonparallel environments
-        #self._agent_selector = agent_selector(self.agents)
-        #self.agent_selection = self._agent_selector.next()
-        #self.updates = []
-        self.observations = observations
-        return observations
-
-    """
-    Define dimensions of heatmap in the observation space for each agent
-    """
-    def init_heatmaps(self):
-        height, width = self._prob._height, self._prob._width
-        heatmaps = {agent: np.zeros((height, width)) for agent in self.agents}
-        return heatmaps
-
-    """
-    Advance the environment using a specific action
-
-    Parameters:
-        actions: a dictionary of actions that are used to advance the
-        environment. Each key represents an agent and each value represents the
-        action chosen by that agent
-
-    Returns:
-        observation: the current observation after applying the action
-        float: the reward that happened because of applying that action
-        boolean: if the problem eneded (episode is over)
-        dictionary: debug information that might be useful to understand what's happening
-    """
-    def step(self, actions):
         self._iteration += 1
+        self.agent_actions_history[agent].append(action)
+
+        # update cumulative rewards
+        #taken from https://www.pettingzoo.ml/environment_creation#example-custom-environment
+        # why do we set _cumulative_rewards to 0 for each step?
+        # shouldn't cumulative rewards be keep getting added to each time step
+        self._cumulative_rewards[agent] = 0
+        
+        # store action of current agent
+        self.state[self.agent_selection] = action
+
+        # update level map
         #save copy of the old stats to calculate the reward
         old_stats = self._rep_stats
-
         # update game state based on selected actions
-        updates = self._rep.update(actions)
-
-        changes = [self.update_heatmap(agent, update) for agent, update in zip(self.agents, updates)]
-        new_stats = old_stats
-        if sum(changes) > 0:
+        [update] = self._rep.update({agent: action})
+        # update heatmap
+        n_changes = self.update_heatmap(agent, update)
+        if n_changes > 0:
             new_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
+            # update rep stats
             self._rep_stats = new_stats
 
-        # get next state
+        # update observations
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
             obs["heatmap"] = self._heatmaps[agent].copy()
         self.observations = observations
 
-        # compute reward
-        # assume shared reward signal
-        reward = self._prob.get_reward(new_stats, old_stats)
-        rewards = {agent: reward for agent in self.agents}
+        if self._agent_selector.is_last():
+            # update rewards for all agents
+            reward = self._prob.get_reward(self._rep_stats, old_stats)
+            self.rewards = {agent: reward for agent in self.agents}
+        else:
+            # make sure agent rewards are all set to 0
+            self.reset_rewards()
 
-        # check game end conditions
-        # assume shared done signal
-        done = self.check_done(new_stats, old_stats)
+        # if agent is done, set dones for all agents
+        done = self.check_done(self._rep_stats, old_stats)
         dones = {agent: done for agent in self.agents}
         dones['__all__'] = done
         self.dones = dones
 
+        # collect metadata for all agents
+        info = self.get_metadata()
+        self.infos = info
 
-        # collect metadata
-        common_metadata = self._prob.get_debug_info(new_stats)
-        common_info = {}
-        common_info["iterations"] = self._iteration
-        common_info["changes"] = self._changes
-        common_info["max_iterations"] = self._max_iterations
-        common_info["max_changes"] = self._max_changes
-        info = {agent: {} for agent in self.agents}
-        info['__common__'] = {'metadata': common_metadata, **common_info}
+        # select next agent
+        self.agent_selection = self._agent_selector.next()
 
-        #return the values
-        return observations, rewards, dones, info
+        # add .rewards to ._cumulative_rewards
+        self._accumulate_rewards()
 
-    def get_info(self):
-        return self._prob.get_debug_info(self._rep_stats)
 
-    """
-    """
-    def update_heatmap(self, agent, update):
-        change, x, y = update
-        if change == 0:
-            return change
-        self._changes += change
-        self._heatmaps[agent][y][x] += 1.0
-        return change
+        # petting zoo does not require that step() returns these elements,
+        # but gym wrappers do
+        return self.observations, self.rewards, self.dones, self.infos
 
-    """
-    Check for done condition in the environment. There are three conditions
-    that can lead to a finished environment:
-    1. The environment has reached a satisfiable level of quality (this is
-    determined by the problem's `get_episode_over` method)
+    def get_tile_map(self):
+        """
+        obtain the mapping between the tile types and their integer encodings
+        """
+        return self._rep.tile_id_map
 
-    2. The maximum number of changes is reached
 
-    3. The maximum number of steps is reached
 
-    Parameters:
-        old_stats: stats regarding the representation from the previous timestep
-    """
-    def check_done(self, new_stats, old_stats):
-        return self.check_success() or \
-                self._changes >= self._max_changes or \
-                self._iteration >= self._max_iterations
 
-    def check_success(self):
-        return self._prob.get_episode_over(self._rep_stats)
 
-    """
-    Adjust the used parameters by the problem or representation
+        
+    
 
-    Parameters:
-        change_percentage (float): a value between 0 and 1 that determine the
-        percentage of tiles the algorithm is allowed to modify. Having small
-        values encourage the agent to learn to react to the input screen.
-        **kwargs (dict(string,any)): the defined parameters depend on the used
-        representation and the used problem
-    """
-    def adjust_param(self, **kwargs):
-        if 'change_percentage' in kwargs:
-            percentage = min(1, max(0, kwargs.get('change_percentage')))
-            self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
-        self._prob.adjust_param(**kwargs)
-        self._rep.adjust_param(**kwargs)
-        self.action_spaces = self._get_action_spaces()
-        self.observation_spaces = self._get_observation_spaces()
 
-    """
-    Render the current state of the environment
-
-    Parameters:
-        mode (string): the value has to be defined in render.modes in metadata
-
-    Returns:
-        img or boolean: img for rgb_array rendering and boolean for human rendering
-    """
-    def render(self, mode='human'):
-        tile_size=16
-        img = self._prob.render(get_string_map(self._rep._map, self._prob.get_tile_types()))
-        img = self._rep.render(img, self._prob._tile_size, self._prob._border_size).convert("RGB")
-        if mode == 'rgb_array':
-            return img
-        elif mode == 'human':
-            from gym.envs.classic_control import rendering
-            if self.viewer is None:
-                self.viewer = rendering.SimpleImageViewer()
-            if not hasattr(img, 'shape'):
-                img = np.array(img)
-            self.viewer.imshow(img)
-            return self.viewer.isopen

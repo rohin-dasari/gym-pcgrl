@@ -1,5 +1,5 @@
 # Rllib trainer config
-env: MAPcgrl-binary-narrow-v0
+env: Parallel_MAPcgrl-binary-narrow-v0
 env_config:
     binary_actions: True
 num_gpus: 0
@@ -8,9 +8,15 @@ output: experiments
 render_env: false
 ####################
 # Tune API parameters
-training_iterations: 25000
+algorithm: PPO
+stop:
+    training_iteration: 2
+mode: max
+metric: episode_reward_mean
+checkpoint_score_attr: episode_reward_mean
+keep_checkpoints_num: 3
+checkpoint_freq: 1
 checkpoint_at_end: true
-checkpoint_freqL: 1000
 ####################
 # model config
 model_config: 

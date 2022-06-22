@@ -12,9 +12,9 @@ class NarrowRepresentation(Representation):
     """
     Initialize all the parameters used by that representation
     """
-    def __init__(self):
+    def __init__(self, random_tile=True):
         super().__init__()
-        self._random_tile = True
+        self._random_tile = random_tile
 
     """
     Resets the current representation where it resets the parent and the current
@@ -25,10 +25,14 @@ class NarrowRepresentation(Representation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob, initial_level=None):
+    def reset(self, width, height, prob, initial_level=None, initial_position=None):
         super().reset(width, height, prob, initial_level)
-        self._x = self._random.randint(width)
-        self._y = self._random.randint(height)
+        if initial_position is None:
+            self._x = self._random.randint(width)
+            self._y = self._random.randint(height)
+        else:
+            self._x = initial_position['x']
+            self._y = initial_position['y']
 
     """
     Gets the action space used by the narrow representation

@@ -41,3 +41,7 @@ runs/
 *.vim*
 eval/
 
+*.gif
+*.jpg
+*.jpeg
+*.png

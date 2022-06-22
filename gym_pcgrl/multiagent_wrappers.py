@@ -7,7 +7,7 @@ import os
 
 from gym_pcgrl.wrapper_utils import get_env
 
-MAPCGRL_ENV = 'Parallel_MAPcgrlEnv'
+MAPCGRL_ENV = 'MAPcgrlEnv'
 
 #get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
 get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)

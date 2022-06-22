@@ -1,10 +1,12 @@
-from gym_pcgrl.envs.probs import PROBLEMS
-from gym_pcgrl.envs.reps import REPRESENTATIONS
-from gym_pcgrl.envs.helper import get_int_prob, get_string_map
+from copy import deepcopy
 import numpy as np
 import gym
 from gym import spaces
 import PIL
+
+from gym_pcgrl.envs.probs import PROBLEMS
+from gym_pcgrl.envs.reps import REPRESENTATIONS
+from gym_pcgrl.envs.helper import get_int_prob, get_string_map
 
 """
 The PCGRL GYM Environment
@@ -24,9 +26,10 @@ class PcgrlEnv(gym.Env):
         rep (string): the current representation. This name has to be defined in REPRESENTATIONS
         constant in gym_pcgrl.envs.reps.__init__.py
     """
-    def __init__(self, prob="binary", rep="narrow"):
+    def __init__(self, prob="binary", rep="narrow", **kwargs):
         self._prob = PROBLEMS[prob]()
-        self._rep = REPRESENTATIONS[rep]()
+        # random_tile will be False by default (if it is not passed as an argument)
+        self._rep = REPRESENTATIONS[rep](random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False)
         self._rep_stats = None
         self._iteration = 0
         self._changes = 0
@@ -56,6 +59,33 @@ class PcgrlEnv(gym.Env):
         self._prob.seed(seed)
         return [seed]
 
+
+    def get_map(self):
+        return self._rep._map
+
+    def set_state(self, initial_level=None, initial_position=None):
+        """
+        Used to set the map and initial positions of the agents outside of the
+        reset method When wrapping this environment in gym wrappers, one cannot
+        pass arguments to the reset method to explicitly set the map and agent
+        positions, therefore, a user should call this method (if this
+        environment is wrapped in gym wrappers) to set the map and agent
+        positions.
+        """
+        initial_level = deepcopy(initial_level)
+        initial_position = deepcopy(initial_position)
+
+        tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
+        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level)
+        if initial_position is not None:
+            self._rep._x = initial_position['x']
+            self._rep.agent_position = initial_position
+        observation = self._rep.get_observation()
+        observation["heatmap"] = self._heatmaps[agent].copy()
+        self.observation = observation
+        return observation
+
+
     """
     Resets the environment to the start state
 
@@ -63,10 +93,16 @@ class PcgrlEnv(gym.Env):
         Observation: the current starting observation have structure defined by
         the Observation Space
     """
-    def reset(self):
+    def reset(self, initial_level=None, initial_position=None):
+
+        initial_level = deepcopy(initial_level)
+        initial_position = deepcopy(initial_position)
+
         self._changes = 0
         self._iteration = 0
-        self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()))
+        self._heatmaps = self.init_heatmaps()
+        tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
+        self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level, initial_position)
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
         self._heatmap = np.zeros((self._prob._height, self._prob._width))
@@ -92,6 +128,9 @@ class PcgrlEnv(gym.Env):
     """
     def get_num_tiles(self):
         return len(self._prob.get_tile_types())
+
+    def get_rep_stats(self):
+        return self._rep_stats
 
     """
     Adjust the used parameters by the problem or representation
@@ -140,8 +179,8 @@ class PcgrlEnv(gym.Env):
         observation = self._rep.get_observation()
         observation["heatmap"] = self._heatmap.copy()
         reward = self._prob.get_reward(self._rep_stats, old_stats)
-        done = self._prob.get_episode_over(self._rep_stats,old_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
-        info = self._prob.get_debug_info(self._rep_stats,old_stats)
+        done = self._prob.get_episode_over(self._rep_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
+        info = self._prob.get_debug_info(self._rep_stats)
         info["iterations"] = self._iteration
         info["changes"] = self._changes
         info["max_iterations"] = self._max_iterations

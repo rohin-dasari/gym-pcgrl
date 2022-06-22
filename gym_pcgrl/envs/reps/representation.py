@@ -118,3 +118,4 @@ class Representation:
     """
     def render(self, lvl_image, tile_size, border_size):
         return lvl_image
+

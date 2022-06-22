@@ -59,6 +59,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         # each value corresponds to that agent's position
         self.agent_positions = {}
         self._random_tile = random_tile
+        print(self._random_tile)
         self._reset = False
 
 
@@ -70,17 +71,20 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob, initial_level=None):
+    def reset(self, width, height, prob, initial_level=None, initial_positions=None):
         self._reset = True
         super().reset(width, height, prob, initial_level)
         # initialize starting position for each agent
         # there is a unique agent for each tile type
         self.agent_positions = {}
-        for agent in self.agents:
-            self.agent_positions[agent] = {
-                        'x': self._random.randint(width),
-                        'y': self._random.randint(height)
-                    }
+        if initial_positions is None:
+            for agent in self.agents:
+                self.agent_positions[agent] = {
+                            'x': self._random.randint(width),
+                            'y': self._random.randint(height)
+                        }
+        else:
+            self.agent_positions = initial_positions
 
     """
     Gets the action space used by the narrow representation. For the MARL
@@ -193,7 +197,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         pos['x'] = x
         pos['y'] = y
         self.agent_positions[agent] = pos
-        return change, x, y
+        return change, x, y # return number of changes and new position
 
     """
     """
