@@ -145,7 +145,7 @@ def save_metrics(results, logdir, level_id):
     leveldir.mkdir(exist_ok=True)
     # save success data
     with open(Path(leveldir, 'success.json'), 'w+') as f:
-        f.write(json.dumps({'success': results['success']}))
+        f.write(json.dumps({'success': bool(results['success'])}))
     # save action data
     actions_df = pd.DataFrame(results['actions'])
     actions_df.to_csv(Path(leveldir, 'actions.csv'))
