@@ -182,9 +182,11 @@ def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, 
             'success_rate': n_success/n_trials,
             'success_count': n_success,
             'n_trials': n_trials,
-            'checkpoint_loader': checkpoint_loader
+            'checkpoint_loader': checkpoint_loader_type
 
             }
+    with open(Path(out_path, 'metadata.json'), 'w+') as f:
+        f.write(json.dumps(metadata))
     return n_success
 
 def get_checkpoint_loader(checkpoint_loader_name):
