@@ -193,7 +193,7 @@ def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, 
             'success_count': n_success,
             'n_trials': n_trials,
             'checkpoint_loader': checkpoint_loader_type,
-            'trainer_iteration': trainer._iteration
+            'trainer_iteration': int(trainer._iteration)
 
             }
     with open(Path(out_path, 'metadata.json'), 'w+') as f:
