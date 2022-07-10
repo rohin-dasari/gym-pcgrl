@@ -168,10 +168,7 @@ def save_metrics(results, logdir, level_id):
         ax = sns.heatmap(heatmap, linewidth=0.5)
         figure = ax.get_figure()    
         figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
-        #imageio.imwrite(
-        #        Path(heatmap_dir, f'{agent}_heatmap.png'),
-        #        heatmap.astype('uint8')*255
-        #        )
+
 
 def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, n_trials=40, lvl_dir=None):
     n_success = 0
@@ -276,4 +273,5 @@ if __name__ == '__main__':
             lvl_dir=lvl_dir
             )
     print(f'Success Rate: {success_count}')
+    print(f'Wrote logs to {args.out_path}')
 
