@@ -8,9 +8,16 @@ framework: torch
 render_env: false
 ####################
 # Tune API parameters -> currently not accounted for when loading config
-training_iterations: 25000
+algorithm: PPO
+stop:
+    training_iteration: 2
+mode: max
+metric: episode_reward_mean
+checkpoint_score_attr: episode_reward_mean
+keep_checkpoints_num: 3
+checkpoint_freq: 1
 checkpoint_at_end: true
-checkpoint_freqL: 1000
+# 
 ####################
 # model config
 model_config: 
