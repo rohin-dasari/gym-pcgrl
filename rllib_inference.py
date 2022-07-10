@@ -192,7 +192,8 @@ def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, 
             'success_rate': n_success/n_trials,
             'success_count': n_success,
             'n_trials': n_trials,
-            'checkpoint_loader': checkpoint_loader_type
+            'checkpoint_loader': checkpoint_loader_type,
+            'trainer_iteration': trainer._iteration
 
             }
     with open(Path(out_path, 'metadata.json'), 'w+') as f:
@@ -251,7 +252,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.out_path is None:
-        args.out_path = Path(args.experiment_path, f'eval_{uuid4()}')
+        args.out_path = Path(
+                args.experiment_path,
+                f'eval_{args.checkpoint_loader}_{uuid4()}'
+                )
 
     print(f'Writing Evaluation Results to: {args.out_path}')
 
@@ -273,5 +277,5 @@ if __name__ == '__main__':
             lvl_dir=lvl_dir
             )
     print(f'Success Rate: {success_count}')
-    print(f'Wrote logs to {args.out_path}')
+    print(f'Successfully wrote evaluation results to: {args.out_path}')
 
