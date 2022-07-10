@@ -189,8 +189,8 @@ def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, 
     # actions: [[timestep, agentid, x_pos, y_pos, action]]
     # save evaluation metadata
     metadata = {
-            'success_rate': n_success/n_trials,
-            'success_count': n_success,
+            'success_rate': float(n_success/n_trials),
+            'success_count': int(n_success),
             'n_trials': n_trials,
             'checkpoint_loader': checkpoint_loader_type,
             'trainer_iteration': int(trainer._iteration)
