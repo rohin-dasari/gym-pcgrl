@@ -14,11 +14,12 @@ import json
 from tqdm import tqdm
 import imageio
 import numpy as np
+import seaborn as sns
+import matplotlib.pylab as plt
 
 
 
 def restore_trainer(checkpoint_path, config):
-
     trainer = ppo.PPOTrainer(config=config)
     trainer.restore(str(checkpoint_path))
     return trainer
@@ -81,7 +82,8 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
             'success': env.check_success(),
             'frames': frames,
             'actions': action_data,
-            'info': infos
+            'info': infos,
+            'heatmaps': env.get_heatmaps(), # spatial information about changes
             }
     return env.check_success()
 
@@ -159,6 +161,17 @@ def save_metrics(results, logdir, level_id):
     # save gifs
     imageio.mimsave(Path(leveldir, 'frames.gif'), frames)
 
+    #save heatmaps
+    heatmap_dir = Path(leveldir, 'heatmaps')
+    heatmap_dir.mkdir(exist_ok=True)
+    for agent, heatmap in results['heatmaps'].items():
+        ax = sns.heatmap(heatmap, linewidth=0.5)
+        figure = ax.get_figure()    
+        figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+        #imageio.imwrite(
+        #        Path(heatmap_dir, f'{agent}_heatmap.png'),
+        #        heatmap.astype('uint8')*255
+        #        )
 
 def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, n_trials=40, lvl_dir=None):
     n_success = 0
@@ -204,7 +217,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            '--experiment_path'
+            '--experiment_path',
             '-e',
             dest='experiment_path',
             type=str,
@@ -217,7 +230,7 @@ if __name__ == '__main__':
             type=str,
             default='best',
             help='accepts args from the set [latest, best]. Allows user to choose which checkpoint to load',
-            required=True
+            required=False
             )
 
     parser.add_argument(

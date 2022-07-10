@@ -80,6 +80,9 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             tile_id = action - 1
             return f'place {self.tile_types[tile_id]}'
 
+    def get_heatmaps(self):
+        return self._heatmaps
+
     """
     """
     def _get_observation_spaces(self):
