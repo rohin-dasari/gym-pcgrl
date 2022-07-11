@@ -132,7 +132,7 @@ def get_latest_checkpoint(experiment_path, config):
             latest_checkpoint = trainer
             latest_checkpoint_name = checkpoint
     print(f'Loaded from checkpoint: {latest_checkpoint_name}')
-    return trainer
+    return latest_checkpoint
 
 def load_level(lvl_dir, lvl_id):
     with open(Path(lvl_dir, f'level_{lvl_id}.txt'), 'r') as f:
