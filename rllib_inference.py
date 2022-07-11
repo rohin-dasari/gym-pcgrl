@@ -164,15 +164,37 @@ def save_metrics(results, logdir, level_id):
     #save heatmaps
     heatmap_dir = Path(leveldir, 'heatmaps')
     heatmap_dir.mkdir(exist_ok=True)
+    import pdb; pdb.set_trace()
     for agent, heatmap in results['heatmaps'].items():
-        ax = sns.heatmap(heatmap, linewidth=0.5)
-        figure = ax.get_figure()    
-        figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+        fig, ax = plt.subplots()
+        im = ax.imshow(heatmap)
+        cbar = ax.figure.colorbar(im, ax=ax)
+        cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+        #ax = sns.heatmap(heatmap, linewidth=0.5)
+        #figure = ax.get_figure()    
+        #figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
 
 
-def collect_metrics(config, checkpoint_loader_type, experiment_path,  out_path, n_trials=40, lvl_dir=None):
+def load_config_for_inference(config_path):
+    config = parse_config(config_path)['rllib_config']
+    config['env_config']['random_tile'] = False
+    config['explore'] = False
+    return config
+
+
+def collect_metrics(
+        config_path,
+        checkpoint_loader_type,
+        experiment_path,
+        out_path,
+        n_trials=40,
+        lvl_dir=None):
+
     n_success = 0
     checkpoint_loader = get_checkpoint_loader(checkpoint_loader_type)
+    config = load_config_for_inference(config_path)
     trainer = checkpoint_loader(experiment_path, config)
     env = build_env(config['env'], config['env_config'])
     policy_mapping_fn = config['multiagent']['policy_mapping_fn']
@@ -261,15 +283,16 @@ if __name__ == '__main__':
 
     #config_path = 'configs/full_actions_maze.yaml'
     #config_path = 'configs/binary_actions_maze.yaml'
-    config_path = args.config_path
+    #config_path = args.config_path
+    ## save a copy of the original config in the experiment location
     lvl_dir = 'binary_levels'
-    config = parse_config(config_path)['rllib_config']
-    config['env_config']['random_tile'] = False
-    config['explore'] = False
+    #config = parse_config(config_path)['rllib_config']
+    #config['env_config']['random_tile'] = False
+    #config['explore'] = False
     #experiment_path = '/home/rohindasari/ray_results/PPOTrainer_MAPcgrl-binary-narrow-v0_2022-04-20_14-36-22sbcpie2f'
 
     success_count = collect_metrics(
-            config,
+            args.config_path,
             args.checkpoint_loader,
             args.experiment_path,
             args.out_path,
