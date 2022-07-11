@@ -164,7 +164,6 @@ def save_metrics(results, logdir, level_id):
     #save heatmaps
     heatmap_dir = Path(leveldir, 'heatmaps')
     heatmap_dir.mkdir(exist_ok=True)
-    import pdb; pdb.set_trace()
     for agent, heatmap in results['heatmaps'].items():
         fig, ax = plt.subplots()
         im = ax.imshow(heatmap)
