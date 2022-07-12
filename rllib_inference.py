@@ -15,6 +15,8 @@ from tqdm import tqdm
 import imageio
 import numpy as np
 import seaborn as sns
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pylab as plt
 
 
@@ -171,6 +173,7 @@ def save_metrics(results, logdir, level_id):
         cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
         ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
         fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+        plt.close(fig) # close figure to prevent memory issues
         #ax = sns.heatmap(heatmap, linewidth=0.5)
         #figure = ax.get_figure()    
         #figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
