@@ -333,6 +333,12 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         self.action_spaces = self._get_action_spaces()
         self.observation_spaces = self._get_observation_spaces()
 
+    def get_agent_color_mapping(self):
+        if hasattr(self._rep, 'agent_color_mapping'):
+            return self._rep.agent_color_mapping
+        else:
+            raise RuntimeError('Must call render method in order to compute mapping')
+
     """
     Render the current state of the environment
 

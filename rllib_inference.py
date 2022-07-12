@@ -59,7 +59,12 @@ def collect_action_metadata(env, actions):
 def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
     done = False
     obs = env.reset()
-    rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
+    agent_positions = {}
+    for i, agent in enumerate(env.agents):
+        agent_positions[agent] =  {'x': i, 'y': 0}
+
+    #rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
+    rawobs = env.set_state(initial_level=initial_level, initial_positions=agent_positions)
     obs = env.transform_observations(rawobs)
 
     #imageio.imsave('initial_img.png', env.render(mode='rgb_array'))
@@ -86,6 +91,7 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
             'actions': action_data,
             'info': infos,
             'heatmaps': env.get_heatmaps(), # spatial information about changes
+            'legend': env.get_agent_color_mapping()
             }
     return env.check_success()
 
@@ -174,9 +180,10 @@ def save_metrics(results, logdir, level_id):
         ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
         fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
         plt.close(fig) # close figure to prevent memory issues
-        #ax = sns.heatmap(heatmap, linewidth=0.5)
-        #figure = ax.get_figure()    
-        #figure.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+
+    # save legend from figure
+    with open(Path(leveldir, 'rendering_legend.json'), 'w+') as f:
+        f.write(json.dumps(results['legend']))
 
 
 def load_config_for_inference(config_path):

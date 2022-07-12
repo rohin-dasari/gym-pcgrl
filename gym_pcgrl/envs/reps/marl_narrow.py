@@ -59,7 +59,6 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         # each value corresponds to that agent's position
         self.agent_positions = {}
         self._random_tile = random_tile
-        print(self._random_tile)
         self._reset = False
 
 
@@ -239,7 +238,8 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     def render(self, lvl_image, tile_size, border_size):
         colors = [(255, 0, 0, 255), (0, 255, 0, 255)] # expand to handle more agents
-        for color, agent in zip(colors, self.agents):
+        self.agent_color_mapping = {agent: color for agent, color in zip(self.agents, colors)}
+        for agent, color in self.agent_color_mapping.items():
             rect = self.draw_rect(tile_size, color)
             x_pos = (self.agent_positions[agent]['x']+border_size[0])*tile_size
             x_pos_width = (self.agent_positions[agent]['x']+border_size[0]+1)*tile_size
