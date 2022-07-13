@@ -60,11 +60,8 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
     done = False
     obs = env.reset()
     agent_positions = {}
-    for i, agent in enumerate(env.agents):
-        agent_positions[agent] =  {'x': i, 'y': 0}
 
-    #rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
-    rawobs = env.set_state(initial_level=initial_level, initial_positions=agent_positions)
+    rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
     obs = env.transform_observations(rawobs)
 
     #imageio.imsave('initial_img.png', env.render(mode='rgb_array'))

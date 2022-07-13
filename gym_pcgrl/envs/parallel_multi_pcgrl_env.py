@@ -351,6 +351,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     def render(self, mode='human'):
         tile_size=16
         img = self._prob.render(get_string_map(self._rep._map, self._prob.get_tile_types()))
+        # add color coded squares for the agent positions
         img = self._rep.render(img, self._prob._tile_size, self._prob._border_size).convert("RGB")
         if mode == 'rgb_array':
             return img
