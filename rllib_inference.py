@@ -14,7 +14,6 @@ import json
 from tqdm import tqdm
 import imageio
 import numpy as np
-import seaborn as sns
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pylab as plt
@@ -80,14 +79,13 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
         action_data.extend(action_metadata)
         infos.append(env.get_metadata())
         done = done['__all__']
-    #imageio.mimsave('animation.gif', frames)
-    #imageio.imsave('final_img.png', frame)
     return {
             'success': env.check_success(),
             'frames': frames,
             'actions': action_data,
             'info': infos,
-            'heatmaps': env.get_heatmaps(), # spatial information about changes
+            'agent_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
+            'tile_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
             'legend': env.get_agent_color_mapping()
             }
     return env.check_success()
@@ -139,9 +137,28 @@ def get_latest_checkpoint(experiment_path, config):
     print(f'Loaded from checkpoint: {latest_checkpoint_name}')
     return latest_checkpoint
 
+def get_checkpoint_by_name(experiment_path, checkpoint_name, config):
+    checkpoint_path = Path(experiment_path, checkpoint_name)
+    trainer = restore_trainer(checkpoint_path, config)
+    print(f'Loaded from checkpoint: {checkpoint_name}')
+    return trainer
+
 def load_level(lvl_dir, lvl_id):
     with open(Path(lvl_dir, f'level_{lvl_id}.txt'), 'r') as f:
         return np.loadtxt(f)
+
+
+def save_heatmaps(logdir, heatmaps):
+
+    heatmap_dir.mkdir(exist_ok=True)
+    for name, heatmap in results['heatmaps'].items():
+        fig, ax = plt.subplots()
+        im = ax.imshow(heatmap)
+        cbar = ax.figure.colorbar(im, ax=ax)
+        cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+        fig.savefig(Path(logdir, f'{name}_heatmap.png'), dpi=400)
+        plt.close(fig) # close figure to prevent memory issues
 
 
 def save_metrics(results, logdir, level_id):
@@ -167,16 +184,18 @@ def save_metrics(results, logdir, level_id):
     imageio.mimsave(Path(leveldir, 'frames.gif'), frames)
 
     #save heatmaps
-    heatmap_dir = Path(leveldir, 'heatmaps')
+    heatmap_dir = Path(leveldir, 'agent_heatmaps')
+    heatmap_dir = Path(leveldir, 'tile_heatmaps')
     heatmap_dir.mkdir(exist_ok=True)
-    for agent, heatmap in results['heatmaps'].items():
-        fig, ax = plt.subplots()
-        im = ax.imshow(heatmap)
-        cbar = ax.figure.colorbar(im, ax=ax)
-        cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
-        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-        fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
-        plt.close(fig) # close figure to prevent memory issues
+    save_heatmaps()
+    #for agent, heatmap in results['heatmaps'].items():
+    #    fig, ax = plt.subplots()
+    #    im = ax.imshow(heatmap)
+    #    cbar = ax.figure.colorbar(im, ax=ax)
+    #    cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
+    #    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    #    fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
+    #    plt.close(fig) # close figure to prevent memory issues
 
     # save legend from figure
     with open(Path(leveldir, 'rendering_legend.json'), 'w+') as f:
@@ -202,6 +221,9 @@ def collect_metrics(
     checkpoint_loader = get_checkpoint_loader(checkpoint_loader_type)
     config = load_config_for_inference(config_path)
     trainer = checkpoint_loader(experiment_path, config)
+    
+    #trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
+
     env = build_env(config['env'], config['env_config'])
     policy_mapping_fn = config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
@@ -212,10 +234,7 @@ def collect_metrics(
         results = rollout(env, trainer, policy_mapping_fn, initial_level=initial_level)
         n_success += results['success']
         save_metrics(results, out_path, str(i))
-    # metrics returned by this thing:
-    # success rate: {n_success, n_trials}
-    # actions: [[timestep, agentid, x_pos, y_pos, action]]
-    # save evaluation metadata
+
     metadata = {
             'success_rate': float(n_success/n_trials),
             'success_count': int(n_success),
@@ -228,13 +247,21 @@ def collect_metrics(
         f.write(json.dumps(metadata))
     return n_success
 
+def load_checkpoint(checkpoint_loader_name, experiment_path, config): # this code has substantial readability issues
+    checkpoint_loader = get_checkpoint_loader(checkpoint_loader_name)
+    if checkpoint_loader_name in ['best', 'latest']:
+        return checkpoint_loader(experiment_path, config)
+    else:
+        return checkpoint_loader(experiment_path, checkpoint_loader_name, config) 
+
+
 def get_checkpoint_loader(checkpoint_loader_name):
     if checkpoint_loader_name == 'best':
         return get_best_checkpoint
     elif checkpoint_loader_name == 'latest':
         return get_latest_checkpoint
     else:
-        raise ValueError('Script only supports selecting the latest or best checkpoints')
+        return get_checkpoint_by_name
 
 
 
@@ -255,7 +282,7 @@ if __name__ == '__main__':
             dest='checkpoint_loader',
             type=str,
             default='best',
-            help='accepts args from the set [latest, best]. Allows user to choose which checkpoint to load',
+            help='accepts args from the set [latest, best]. A user can also pass in a specefic checkpoint name',
             required=False
             )
 

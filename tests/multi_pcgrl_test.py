@@ -97,7 +97,7 @@ def test_against_single_agent_env():
         # apply the same action
         multi_obs, multi_rewards, multi_dones, _ = multi_agent_env.step(1)
         img = multi_agent_env.render(mode='rgb_array')
-        frames.append(img)
+        #frames.append(img)
         single_obs, single_rewards, single_dones, _ = single_agent_env.step(1)
 
         # THEN - the reward received by the agents in their respective environments

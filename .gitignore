@@ -45,3 +45,8 @@ eval/
 *.jpg
 *.jpeg
 *.png
+
+
+# vs config
+*.vs
+*.idea

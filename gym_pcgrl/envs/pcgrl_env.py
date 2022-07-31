@@ -35,7 +35,7 @@ class PcgrlEnv(gym.Env):
         self._changes = 0
         self._max_changes = max(int(0.2 * self._prob._width * self._prob._height), 1)
         self._max_iterations = self._max_changes * self._prob._width * self._prob._height
-        self._heatmap = np.zeros((self._prob._height, self._prob._width))
+        self._agent_heatmap = np.zeros((self._prob._height, self._prob._width))
 
         self.seed()
         self.viewer = None
@@ -66,7 +66,7 @@ class PcgrlEnv(gym.Env):
     def set_state(self, initial_level=None, initial_position=None):
         """
         Used to set the map and initial positions of the agents outside of the
-        reset method When wrapping this environment in gym wrappers, one cannot
+        reset method. When wrapping this environment in gym wrappers, one cannot
         pass arguments to the reset method to explicitly set the map and agent
         positions, therefore, a user should call this method (if this
         environment is wrapped in gym wrappers) to set the map and agent
@@ -81,7 +81,7 @@ class PcgrlEnv(gym.Env):
             self._rep._x = initial_position['x']
             self._rep.agent_position = initial_position
         observation = self._rep.get_observation()
-        observation["heatmap"] = self._heatmaps[agent].copy()
+        observation["heatmap"] = self._agent_eatmaps[agent].copy()
         self.observation = observation
         return observation
 
@@ -100,15 +100,14 @@ class PcgrlEnv(gym.Env):
 
         self._changes = 0
         self._iteration = 0
-        self._heatmaps = self.init_heatmaps()
         tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
         self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level, initial_position)
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
-        self._heatmap = np.zeros((self._prob._height, self._prob._width))
+        self._tile_heatmap = np.zeros((self._prob._height, self._prob._width))
 
         observation = self._rep.get_observation()
-        observation["heatmap"] = self._heatmap.copy()
+        observation["heatmap"] = self._agent_heatmap.copy()
         return observation
 
     """
@@ -173,11 +172,12 @@ class PcgrlEnv(gym.Env):
         change, x, y = self._rep.update(action)
         if change > 0:
             self._changes += change
-            self._heatmap[y][x] += 1.0
+            self._agent_heatmap[y][x] += 1.0
+            self._tile_heatmap[y][x] += 1.0
             self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         # calculate the values
         observation = self._rep.get_observation()
-        observation["heatmap"] = self._heatmap.copy()
+        observation["heatmap"] = self._agent_heatmap.copy()
         reward = self._prob.get_reward(self._rep_stats, old_stats)
         done = self._prob.get_episode_over(self._rep_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
         info = self._prob.get_debug_info(self._rep_stats)
@@ -190,6 +190,10 @@ class PcgrlEnv(gym.Env):
 
     def check_success(self):
         return self._prob.get_episode_over(self._rep_stats)
+
+    def get_agent_position(self):
+        return {'x': self._rep._x, 'y': self._rep._y}
+        pass
 
     """
     Render the current state of the environment

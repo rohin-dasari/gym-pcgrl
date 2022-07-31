@@ -61,7 +61,7 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         # update game state based on selected actions
         [update] = self._rep.update({agent: action})
         # update heatmap
-        n_changes = self.update_heatmap(agent, update)
+        n_changes = self.update_heatmap(agent, update, action)
         if n_changes > 0:
             new_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
             # update rep stats
@@ -70,7 +70,7 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         # update observations
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
+            obs["heatmap"] = self._agent_heatmaps[agent].copy()
         self.observations = observations
 
         if self._agent_selector.is_last():

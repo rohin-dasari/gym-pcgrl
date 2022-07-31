@@ -38,11 +38,10 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             ):
 
         self._prob = PROBLEMS[prob]()
-        tile_types = self._prob.get_tile_types()
-        self.tile_types = tile_types
+        self.tile_types = self._prob.get_tile_types()
         self.binary_actions = binary_actions
         if binary_actions:
-            self.possible_agents = tile_types
+            self.possible_agents = self.tile_types
         else:
             assert num_agents is not None, "The number of agents must be explicitly provided"
             self.possible_agents = list(range(num_agents))
@@ -51,7 +50,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         # random_tile will be False by default (if it is not passed as an argument)
         self._rep = REPRESENTATIONS[rep](
                     self.possible_agents,
-                    tiles=tile_types,
+                    tiles=self.tile_types,
                     binary_actions=binary_actions,
                     random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False
                 )
@@ -80,8 +79,11 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             tile_id = action - 1
             return f'place {self.tile_types[tile_id]}'
 
-    def get_heatmaps(self):
-        return self._heatmaps
+    def get_agent_heatmaps(self):
+        return self._agent_heatmaps
+
+    def get_tile_heatmaps(self):
+        return self._tile_heatmaps
 
     """
     """
@@ -124,7 +126,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     """
     def observe(self, agent):
         observation = self._rep.get_observation(agent)
-        observation["heatmap"] = self._heatmaps[agent].copy()
+        observation["heatmap"] = self._agent_heatmaps[agent].copy()
         return observation
 
     def get_map(self):
@@ -151,7 +153,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             self._rep.agent_positions = initial_positions
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
+            obs["heatmap"] = self._agent_heatmaps[agent].copy()
         self.observations = observations
         return observations
 
@@ -179,7 +181,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
         self._changes = 0
         self._iteration = 0
-        self._heatmaps = self.init_heatmaps()
+        self._agent_heatmaps, self._tile_heatmaps = self.init_heatmaps()
         tile_probs = get_int_prob(self._prob._prob, self._prob.get_tile_types())
         self._rep.reset(self._prob._width, self._prob._height, tile_probs, initial_level, initial_positions)
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
@@ -194,7 +196,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
+            obs["heatmap"] = self._agent_heatmaps[agent].copy()
 
         # only necessary for nonparallel environments
         #self._agent_selector = agent_selector(self.agents)
@@ -208,8 +210,9 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     """
     def init_heatmaps(self):
         height, width = self._prob._height, self._prob._width
-        heatmaps = {agent: np.zeros((height, width)) for agent in self.agents}
-        return heatmaps
+        agent_heatmaps = {agent: np.zeros((height, width)) for agent in self.agents}
+        tile_heatmaps = {tile: np.zeros((height, width)) for tile in self.tile_types}
+        return agent_heatmaps, tile_heatmaps
 
     def get_rep_stats(self):
         return self._rep_stats
@@ -240,7 +243,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         # update game state based on selected actions
         updates = self._rep.update(actions)
 
-        changes = [self.update_heatmap(agent, update) for agent, update in zip(self.agents, updates)]
+        changes = [self.update_heatmap(agent, update, actions[agent]) for agent, update in zip(self.agents, updates)]
         new_stats = old_stats
         if sum(changes) > 0:
             new_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
@@ -249,7 +252,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         # get next state
         observations = self._rep.get_observations()
         for agent, obs in observations.items():
-            obs["heatmap"] = self._heatmaps[agent].copy()
+            obs["heatmap"] = self._agent_heatmaps[agent].copy()
         self.observations = observations
 
         # compute reward
@@ -284,12 +287,17 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
     """
     """
-    def update_heatmap(self, agent, update):
+    def update_heatmap(self, agent, update, action):
         change, x, y = update
         if change == 0:
             return change
         self._changes += change
-        self._heatmaps[agent][y][x] += 1.0
+        self._agent_heatmaps[agent][y][x] += 1.0
+        if not self.binary_actions:
+            tile_id = action - 1
+            tile_type = self.tile_types[tile_id]
+            self._tile_heatmaps[tile_type][y][x] += 1.0
+            pass
         return change
 
     """

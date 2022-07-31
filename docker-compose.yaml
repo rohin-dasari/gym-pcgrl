@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+    pcgrl:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ".:/work"
+            - "~/ray_results:/home/ray/ray_results"
+        working_dir: /work
+        shm_size: '3.93gb'
