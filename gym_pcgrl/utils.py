@@ -37,12 +37,12 @@ def parse_rllib_config(config_file):
     
     config = load_config(config_file)
 
-    env_maker = env_maker_factory(config['env'])
+    env_maker = env_maker_factory(config['rllib_trainer_config']['env'])
     #def env_maker(env_config):
     #    return MARL_CroppedImagePCGRLWrapper(config['env'], 28, **config)
     #tune.register_env(config['env'], lambda config: ParallelPettingZooEnv(env_maker(config)))
 
-    env = env_maker(config['env_config'])
+    env = env_maker(config['rllib_trainer_config']['env_config'])
     sample_agent = env.possible_agents[0]
     obs_space = env.observation_spaces[sample_agent]
     action_space = env.action_spaces[sample_agent]
@@ -50,11 +50,12 @@ def parse_rllib_config(config_file):
     policy_mapping_fn = lambda agent: f'policy_{agent}'
     policies = {f'policy_{agent}': gen_policy(obs_space, action_space, config['model_config']) for agent in env.possible_agents}
     return {
-            'env': config['env'],
-            'env_config': config['env_config'],
-            'num_gpus': config['num_gpus'],
-            'framework': config['framework'],
-            'render_env': config['render_env'],
+            **config['rllib_trainer_config'],
+            #'env': config['env'],
+            #'env_config': config['env_config'],
+            #'num_gpus': config['num_gpus'],
+            #'framework': config['framework'],
+            #'render_env': config['render_env'],
             'multiagent': {
                 'policies': policies,
                 'policy_mapping_fn': policy_mapping_fn
@@ -75,13 +76,14 @@ def parse_tune_config(config_file):
     #checkpoint_at_end: true
     return {
             'run_or_experiment': config['algorithm'],
-            'stop': config['stop'],
-            'mode': config['mode'],
-            'metric': config['metric'],
-            'checkpoint_score_attr': config['checkpoint_score_attr'],
-            'keep_checkpoints_num': config['keep_checkpoints_num'],
-            'checkpoint_freq': config['checkpoint_freq'],
-            'checkpoint_at_end' : config['checkpoint_at_end'],
+            **config['tune_api_config'],
+            #'stop': config['stop'],
+            #'mode': config['mode'],
+            #'metric': config['metric'],
+            #'checkpoint_score_attr': config['checkpoint_score_attr'],
+            #'keep_checkpoints_num': config['keep_checkpoints_num'],
+            #'checkpoint_freq': config['checkpoint_freq'],
+            #'checkpoint_at_end' : config['checkpoint_at_end'],
             }
 
 def parse_config(config_file):

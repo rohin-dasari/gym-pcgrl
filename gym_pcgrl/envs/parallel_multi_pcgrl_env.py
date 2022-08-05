@@ -198,10 +198,6 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         for agent, obs in observations.items():
             obs["heatmap"] = self._agent_heatmaps[agent].copy()
 
-        # only necessary for nonparallel environments
-        #self._agent_selector = agent_selector(self.agents)
-        #self.agent_selection = self._agent_selector.next()
-        #self.updates = []
         self.observations = observations
         return observations
 
@@ -259,6 +255,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         # assume shared reward signal
         reward = self._prob.get_reward(new_stats, old_stats)
         rewards = {agent: reward for agent in self.agents}
+        for agent in self.agents:
+            self._cumulative_rewards[agent] += int(reward)
 
         # check game end conditions
         # assume shared done signal
@@ -271,6 +269,9 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         # collect metadata
         info = self.get_metadata()
         return observations, rewards, dones, info
+
+    def get_cumulative_rewards(self): 
+        return self._cumulative_rewards
 
     def get_metadata(self):
         common_metadata = self._prob.get_debug_info(self._rep_stats)

@@ -63,13 +63,13 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
     rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
     obs = env.transform_observations(rawobs)
 
-    #imageio.imsave('initial_img.png', env.render(mode='rgb_array'))
     frames = []
     actions = []
     infos = []
     action_data = []
     infos.append(env.get_metadata())
     frames.append(env.render(mode='rgb_array'))
+    initial_map = env.get_map()
     while not done:
         actions = get_agent_actions(trainer, obs, policy_mapping_fn)
         action_metadata = collect_action_metadata(env, actions)
@@ -81,12 +81,15 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
         done = done['__all__']
     return {
             'success': env.check_success(),
+            'initial_map': initial_map,
+            'final_map': env.get_map(),
             'frames': frames,
             'actions': action_data,
             'info': infos,
             'agent_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
             'tile_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
-            'legend': env.get_agent_color_mapping()
+            'legend': env.get_agent_color_mapping(),
+            'cumulative_rewards': env.get_cumulative_rewards()
             }
     return env.check_success()
 
@@ -138,7 +141,8 @@ def get_latest_checkpoint(experiment_path, config):
     return latest_checkpoint
 
 def get_checkpoint_by_name(experiment_path, checkpoint_name, config):
-    checkpoint_path = Path(experiment_path, checkpoint_name)
+    checkpoint_path = Path(experiment_path, checkpoint_name, f"checkpoint-{checkpoint_name.split('_')[1].lstrip('0')}")
+    #'checkpoint-{checkpoint_name.split('_')[1].lstrip('0')}'
     trainer = restore_trainer(checkpoint_path, config)
     print(f'Loaded from checkpoint: {checkpoint_name}')
     return trainer
@@ -150,8 +154,8 @@ def load_level(lvl_dir, lvl_id):
 
 def save_heatmaps(logdir, heatmaps):
 
-    heatmap_dir.mkdir(exist_ok=True)
-    for name, heatmap in results['heatmaps'].items():
+    logdir.mkdir(exist_ok=True)
+    for name, heatmap in heatmaps.items():
         fig, ax = plt.subplots()
         im = ax.imshow(heatmap)
         cbar = ax.figure.colorbar(im, ax=ax)
@@ -184,22 +188,22 @@ def save_metrics(results, logdir, level_id):
     imageio.mimsave(Path(leveldir, 'frames.gif'), frames)
 
     #save heatmaps
-    heatmap_dir = Path(leveldir, 'agent_heatmaps')
-    heatmap_dir = Path(leveldir, 'tile_heatmaps')
-    heatmap_dir.mkdir(exist_ok=True)
-    save_heatmaps()
-    #for agent, heatmap in results['heatmaps'].items():
-    #    fig, ax = plt.subplots()
-    #    im = ax.imshow(heatmap)
-    #    cbar = ax.figure.colorbar(im, ax=ax)
-    #    cbar.ax.set_ylabel('changes', rotation=-90, va="bottom")
-    #    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-    #    fig.savefig(Path(heatmap_dir, f'{agent}_heatmap.png'), dpi=400)
-    #    plt.close(fig) # close figure to prevent memory issues
+    agent_heatmap_dir = Path(leveldir, 'agent_heatmaps')
+    tile_heatmap_dir = Path(leveldir, 'tile_heatmaps')
+    save_heatmaps(agent_heatmap_dir, results['agent_heatmaps'])
+    save_heatmaps(tile_heatmap_dir, results['tile_heatmaps'])
 
     # save legend from figure
     with open(Path(leveldir, 'rendering_legend.json'), 'w+') as f:
         f.write(json.dumps(results['legend']))
+
+    # save numpy array of level maps
+    np.savetxt(Path(leveldir, 'initial_map.txt'), results['initial_map'])
+    np.savetxt(Path(leveldir, 'final_map.txt'), results['final_map'])
+
+    # save cumulative_rewards
+    with open(Path(leveldir, 'cumulative_rewards.json'), 'w+') as f:
+        f.write(json.dumps(results['cumulative_rewards']))
 
 
 def load_config_for_inference(config_path):
@@ -218,9 +222,9 @@ def collect_metrics(
         lvl_dir=None):
 
     n_success = 0
-    checkpoint_loader = get_checkpoint_loader(checkpoint_loader_type)
     config = load_config_for_inference(config_path)
-    trainer = checkpoint_loader(experiment_path, config)
+    trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
+    #trainer = checkpoint_loader(experiment_path, config)
     
     #trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
 
@@ -252,16 +256,17 @@ def load_checkpoint(checkpoint_loader_name, experiment_path, config): # this cod
     if checkpoint_loader_name in ['best', 'latest']:
         return checkpoint_loader(experiment_path, config)
     else:
+        tune_metadata_path
         return checkpoint_loader(experiment_path, checkpoint_loader_name, config) 
 
 
-def get_checkpoint_loader(checkpoint_loader_name):
+def load_checkpoint(checkpoint_loader_name, experiment_path, config):
     if checkpoint_loader_name == 'best':
-        return get_best_checkpoint
+        return get_best_checkpoint(experiment_path, config)
     elif checkpoint_loader_name == 'latest':
-        return get_latest_checkpoint
+        return get_latest_checkpoint(experiment_path, config)
     else:
-        return get_checkpoint_by_name
+        return get_checkpoint_by_name(experiment_path, checkpoint_loader_name, config)
 
 
 
@@ -293,7 +298,6 @@ if __name__ == '__main__':
             type=str,
             help='path to configuration file used during training',
             required=True
-
             )
 
     parser.add_argument(
@@ -303,6 +307,14 @@ if __name__ == '__main__':
             type=str,
             default=None
             )
+
+    parser.add_argument(
+        '--n_trials',
+        '-n',
+        dest='n_trials',
+        type=int,
+        default=40
+    )
 
     args = parser.parse_args()
 
@@ -329,7 +341,7 @@ if __name__ == '__main__':
             args.checkpoint_loader,
             args.experiment_path,
             args.out_path,
-            n_trials=40,
+            n_trials=args.n_trials,
             lvl_dir=lvl_dir
             )
     print(f'Success Rate: {success_count}')

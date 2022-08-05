@@ -7,23 +7,10 @@ from gym_pcgrl.utils import parse_config
 
 def train(config_path):
     parsed_configs = parse_config(config_path)
-    #rllib_config = parse_config(config_path)
-    #tune_config = parse_config(config_path)
     results = tune.run(
                 **parsed_configs['tune_config'],
                 config=parsed_configs['rllib_config']
             )
-    #results = tune.run(
-    #        'PPO',
-    #        config=rllib_config,
-    #        stop={'training_iteration': 1},
-    #        mode='max',
-    #        metric='episode_reward_mean',
-    #        checkpoint_score_attr='episode_reward_mean',
-    #        keep_checkpoints_num=3,
-    #        checkpoint_freq=1,
-    #        checkpoint_at_end=True
-    #        )
 
 
 if __name__ == '__main__':

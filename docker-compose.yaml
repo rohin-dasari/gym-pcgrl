@@ -1,4 +1,4 @@
-version: "3.9"
+version: "3.3"
 services:
     pcgrl:
         build:
@@ -8,4 +8,4 @@ services:
             - ".:/work"
             - "~/ray_results:/home/ray/ray_results"
         working_dir: /work
-        shm_size: '3.93gb'
+        shm_size: 4gb # docker-compose version 3.3 can only accept integer values for shm_size
