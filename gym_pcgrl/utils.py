@@ -5,7 +5,7 @@ import yaml
 from ray import tune
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv, ParallelPettingZooEnv
 from gym_pcgrl.parallel_multiagent_wrappers import MARL_CroppedImagePCGRLWrapper_Parallel
-#from gym_pcgrl.multiagent_wrappers import MARL_CroppedImagePCGRLWrapper
+from gym_pcgrl.multiagent_wrappers import MARL_CroppedImagePCGRLWrapper
 
 def gen_policy(obs_space, action_space, model):
     pass
@@ -22,12 +22,18 @@ def load_config(config_file):
         config = yaml.safe_load(f)
         return config
 
-def env_maker_factory(env_name):
+def env_maker_factory(env_name, is_parallel):
     def env_maker(env_config):
         # crop size is harcoded, move to config
-        return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
+        if is_parallel:
+            return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
+        else:
+            return MARL_CroppedImagePCGRLWrapper(env_name, 28, **env_config)
 
-    tune.register_env(env_name, lambda config: ParallelPettingZooEnv(env_maker(config)))
+    if is_parallel:
+        tune.register_env(env_name, lambda config: ParallelPettingZooEnv(env_maker(config)))
+    else:
+        tune.register_env(env_name, lambda config: PettingZooEnv(env_maker(config)))
     return env_maker
 
 def parse_rllib_config(config_file):
@@ -37,7 +43,8 @@ def parse_rllib_config(config_file):
     
     config = load_config(config_file)
 
-    env_maker = env_maker_factory(config['rllib_trainer_config']['env'])
+    is_parallel = 'Parallel' in config['rllib_trainer_config']['env']
+    env_maker = env_maker_factory(config['rllib_trainer_config']['env'], is_parallel)
     #def env_maker(env_config):
     #    return MARL_CroppedImagePCGRLWrapper(config['env'], 28, **config)
     #tune.register_env(config['env'], lambda config: ParallelPettingZooEnv(env_maker(config)))

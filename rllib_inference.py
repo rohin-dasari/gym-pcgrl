@@ -251,15 +251,6 @@ def collect_metrics(
         f.write(json.dumps(metadata))
     return n_success
 
-def load_checkpoint(checkpoint_loader_name, experiment_path, config): # this code has substantial readability issues
-    checkpoint_loader = get_checkpoint_loader(checkpoint_loader_name)
-    if checkpoint_loader_name in ['best', 'latest']:
-        return checkpoint_loader(experiment_path, config)
-    else:
-        tune_metadata_path
-        return checkpoint_loader(experiment_path, checkpoint_loader_name, config) 
-
-
 def load_checkpoint(checkpoint_loader_name, experiment_path, config):
     if checkpoint_loader_name == 'best':
         return get_best_checkpoint(experiment_path, config)

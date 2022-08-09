@@ -1,6 +1,4 @@
 import pytest
-import imageio
-from copy import deepcopy
 import numpy as np
 import gym
 import gym_pcgrl
@@ -41,6 +39,19 @@ def test_binary_env_agent_step(binary_env):
     # test that reward is not set until last agent goes
     assert env.rewards['empty'] == 0
 
+
+
+def test_observation_structure(binary_env):
+    env = binary_env
+    env.reset()
+    action = 1
+    obs = env.observe_current_agent()
+    print(obs)
+    newobs, _, _, _ = env.step(action)
+    print('-------------')
+    print(newobs)
+    
+    pass
 
 def test_set_agent_level_and_position():
     pass

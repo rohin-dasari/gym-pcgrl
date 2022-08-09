@@ -30,6 +30,20 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
     def observe_current_agent(self):
         return self.observe(self.agent_selection)
 
+    def get_current_agent_rewards(self):
+        return self.rewards[self.agent_selection]
+
+    def get_current_agent_done(self):
+        agent = self.agent_selection
+        done = self.dones[agent]
+        return {agent: done, '__all__': done}
+
+    def get_current_agent_info(self):
+        agent = self.agent_selection
+        info = self.infos[agent]
+        return {agent: info, '__common__': self.infos['__common__']}
+        
+
     def reset(self, initial_level=None, initial_positions=None):
         # call super's init
         obs = super().reset(initial_level, initial_positions)
@@ -78,7 +92,7 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
             reward = self._prob.get_reward(self._rep_stats, old_stats)
             self.rewards = {agent: reward for agent in self.agents}
         else:
-            # make sure agent rewards are all set to 0
+            # make sure agent rewards are all set to 0 when episode ends
             self.reset_rewards()
 
         # if agent is done, set dones for all agents
@@ -97,9 +111,9 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         # add .rewards to ._cumulative_rewards
         self._accumulate_rewards()
 
-
         # petting zoo does not require that step() returns these elements,
         # but gym wrappers do
+        #return self.observations, self.rewards[agent], self.dones, self.infos
         return self.observations, self.rewards, self.dones, self.infos
 
     def get_tile_map(self):

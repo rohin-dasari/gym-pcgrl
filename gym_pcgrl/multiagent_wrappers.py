@@ -12,7 +12,7 @@ MAPCGRL_ENV = 'MAPcgrlEnv'
 #get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
 get_mapcgrl_obj = lambda env: env if "MAPcgrlEnv" in str(type(env)) else get_mapcgrl_obj(env.env)
 
-class MARL_Cropped_Parallel(gym.Wrapper):
+class MARL_Cropped(gym.Wrapper):
     def __init__(self, game, crop_size, pad_value, name, **kwargs):
         self.env = get_env(game)
         get_mapcgrl_obj(self.env).adjust_param(**kwargs)
@@ -53,14 +53,33 @@ class MARL_Cropped_Parallel(gym.Wrapper):
         self.observation_spaces = obs_spaces
 
         
-    def step(self, action_dict):
-        obss, rews, dones, infos = self.env.step(action_dict)
-        obss = self.transform_observations(obss)
-        return obss, rews, dones, infos
+    def last(self):
+        obs, rew, done, info = self.env.last()
+        return self.transform(obs), rew, done, info
+
+    def observe(self, agent):
+        return self.transform(self.env.observe(agent))
+
+
+    def _was_done_step(self, action):
+        self.env._was_done_step(action)
+
+    def step(self, action):
+        if action == None:
+            return self._was_done_step(action)
+
+        self.env.step(action)
+        self.observations = self.transform_observations(self.env.observations)
+        obs = self.transform(self.env.observe_current_agent())
+        rew = self.env.get_current_agent_rewards()
+        done = self.env.get_current_agent_done()
+        info = self.env.get_current_agent_info()
+        return obs, rew, done, info
 
     def reset(self):
-        obss = self.env.reset()
-        obs = self.transform_observations(obss)
+        self.env.reset()
+        self.observations = self.transform_observations(self.env.observations)
+        obs = self.transform(self.env.observe_current_agent())
         return obs
 
     def transform_observations(self, observations):
@@ -77,7 +96,7 @@ class MARL_Cropped_Parallel(gym.Wrapper):
         return obs
 
 
-class MARL_OneHotEncoding_Parallel(gym.Wrapper):
+class MARL_OneHotEncoding(gym.Wrapper):
     def __init__(self, game, name, **kwargs):
         self.env = get_env(game)
         get_mapcgrl_obj(self.env).adjust_param(**kwargs)
@@ -109,16 +128,33 @@ class MARL_OneHotEncoding_Parallel(gym.Wrapper):
             obs_spaces[agent] = obs_space
         self.observation_spaces = obs_spaces
 
+    def last(self):
+        obs, rew, done, info = self.env.last()
+        return self.transform(obs), rew, done, info
 
-    def step(self, action_dict):
-        obss, rews, dones, infos = self.env.step(action_dict)
-        obss = self.transform_observations(obss)
-        return obss, rews, dones, infos
+    def observe(self, agent):
+        return self.transform(self.env.observe(agent))
+
+    def _was_done_step(step, action):
+        self.env._was_done_step(action)
+
+    def step(self, action):
+        if action == None:
+            return self._was_done_step(action)
+
+        self.env.step(action)
+        self.observations = self.transform_observations(self.env.observations)
+        obs = self.transform(self.env.observe_current_agent())
+        rew = self.env.get_current_agent_rewards()
+        done = self.env.get_current_agent_done()
+        info = self.env.get_current_agent_info()
+        return obs, rew, done, info
 
     def reset(self):
-        obss = self.env.reset()
-        obss = self.transform_observations(obss)
-        return obss
+        self.env.reset()
+        self.observations = self.transform_observations(self.env.observations)
+        obs = self.transform(self.env.observe_current_agent())
+        return obs
 
     def transform_observations(self, observations):
         return {agent: self.transform(obs) for agent, obs in observations.items()}
@@ -129,7 +165,7 @@ class MARL_OneHotEncoding_Parallel(gym.Wrapper):
         return obs
 
 
-class MARL_ToImage_Parallel(gym.Wrapper):
+class MARL_ToImage(gym.Wrapper):
     def __init__(self, game, name, **kwargs):
         self.env = get_env(game)
         get_mapcgrl_obj(self.env).adjust_param(**kwargs)
@@ -150,17 +186,33 @@ class MARL_ToImage_Parallel(gym.Wrapper):
     def observation_space(self, agent):
         return self.observation_spaces[agent]
 
-    def step(self, action_dict):
-        obss, rews, dones, infos = self.env.step(action_dict)
-        #raise ValueError(f'{infos}')
-        infos = {} # infos seems to be cauising issues with rllib
-        obss = self.transform_observations(obss)
-        return obss, rews, dones, infos
+    def last(self):
+        obs, rew, done, info = self.env.last()
+        return self.transform(obs), rew, done, info
+
+    def observe(self, agent):
+        return self.transform(self.env.observe(agent))
+
+    def _was_done_step(self, action):
+        self.env._was_done_step(action)
+
+    def step(self, action):
+        if action == None:
+            return self._was_done_step(action)
+
+        self.env.step(action)
+        self.observations = self.transform_observations(self.env.observations)
+        obs = self.transform(self.env.observe_current_agent())
+        rew = self.env.get_current_agent_rewards()
+        done = self.env.get_current_agent_done()
+        info = self.env.get_current_agent_info()
+        return obs, rew, done, info
 
     def reset(self):
-        obss = self.env.reset()
-        obss = self.transform_observations(obss)
-        return obss
+        self.env.reset()
+        obs = self.transform(self.env.observe_current_agent())
+        self.observations = self.transform_observations(self.env.observations)
+        return obs
 
     def transform_observations(self, observations):
         return {agent: self.transform(obs) for agent, obs in observations.items()}
@@ -175,22 +227,22 @@ class MARL_ToImage_Parallel(gym.Wrapper):
 """
 The wrappers we use for narrow and turtle experiments
 """
-class MARL_CroppedImagePCGRLWrapper_Parallel(gym.Wrapper):
+class MARL_CroppedImagePCGRLWrapper(gym.Wrapper):
     def __init__(self, game, crop_size, **kwargs):
-        self.pcgrl_env = gym.make(game, **kwargs)
+        self.pcgrl_env = get_mapcgrl_obj(gym.make(game, **kwargs))
         #self.pcgrl_env.adjust_param(**kwargs)
         # Cropping the map to the correct crop_size
         envs = []
-        cropped_env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
+        cropped_env = MARL_Cropped(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
         envs.append(cropped_env)
         # Transform to one hot encoding if not binary
         if 'binary' not in game:
-            onehot_env = MARL_OneHotEncoding_Parallel(cropped_env, 'map')
+            onehot_env = MARL_OneHotEncoding(cropped_env, 'map')
             envs.append(onehot_env)
         ## Indices for flatting
         flat_indices = ['map']
         ### Final Wrapper has to be ToImage or ToFlat
-        toimage_env = MARL_ToImage_Parallel(envs[-1], flat_indices)
+        toimage_env = MARL_ToImage(envs[-1], flat_indices)
         envs.append(toimage_env)
         self.env = toimage_env
         self.envs = envs
