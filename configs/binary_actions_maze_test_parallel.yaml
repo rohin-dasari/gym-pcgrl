@@ -1,4 +1,5 @@
 algorithm: PPO
+is_parallel: true
 rllib_trainer_config:
     # Rllib trainer config
     env: Parallel_MAPcgrl-binary-narrow-v0

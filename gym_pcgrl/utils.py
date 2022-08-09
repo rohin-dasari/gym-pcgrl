@@ -31,9 +31,15 @@ def env_maker_factory(env_name, is_parallel):
             return MARL_CroppedImagePCGRLWrapper(env_name, 28, **env_config)
 
     if is_parallel:
-        tune.register_env(env_name, lambda config: ParallelPettingZooEnv(env_maker(config)))
+        tune.register_env(
+                env_name,
+                lambda config: ParallelPettingZooEnv(env_maker(config))
+                )
     else:
-        tune.register_env(env_name, lambda config: PettingZooEnv(env_maker(config)))
+        tune.register_env(
+                env_name,
+                lambda config: PettingZooEnv(env_maker(config))
+                )
     return env_maker
 
 def parse_rllib_config(config_file):
@@ -44,7 +50,10 @@ def parse_rllib_config(config_file):
     config = load_config(config_file)
 
     is_parallel = 'Parallel' in config['rllib_trainer_config']['env']
-    env_maker = env_maker_factory(config['rllib_trainer_config']['env'], is_parallel)
+    env_maker = env_maker_factory(
+            config['rllib_trainer_config']['env'],
+            config['is_parallel']
+            )
     #def env_maker(env_config):
     #    return MARL_CroppedImagePCGRLWrapper(config['env'], 28, **config)
     #tune.register_env(config['env'], lambda config: ParallelPettingZooEnv(env_maker(config)))

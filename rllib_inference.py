@@ -25,8 +25,8 @@ def restore_trainer(checkpoint_path, config):
     trainer.restore(str(checkpoint_path))
     return trainer
 
-def build_env(env_name, env_config):
-    env_maker = env_maker_factory(env_name)
+def build_env(env_name, env_config, is_parallel):
+    env_maker = env_maker_factory(env_name, is_parallel)
     env = env_maker(env_config)
     return env
 
@@ -224,11 +224,8 @@ def collect_metrics(
     n_success = 0
     config = load_config_for_inference(config_path)
     trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
-    #trainer = checkpoint_loader(experiment_path, config)
-    
-    #trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
 
-    env = build_env(config['env'], config['env_config'])
+    env = build_env(config['env'], config['env_config'], config['is_parallel'])
     policy_mapping_fn = config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
         if lvl_dir is None:
