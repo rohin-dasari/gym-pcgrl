@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from ray import tune
-from gym_pcgrl.utils import parse_config
+from gym_pcgrl.utils import parse_config, load_config
 import ray.rllib.agents.ppo as ppo
 from gym_pcgrl.utils import env_maker_factory
 import pandas as pd
@@ -205,11 +205,8 @@ def save_metrics(results, logdir, level_id):
     with open(Path(leveldir, 'cumulative_rewards.json'), 'w+') as f:
         f.write(json.dumps(results['cumulative_rewards']))
 
-def load_config(config_path):
-    return parse_config(config_path)
-
-def prepare_config_for_inference(config):
-    rllib_config = config['rllib_config']
+def prepare_config_for_inference(config_path):
+    rllib_config = parse_config(config_path)['rllib_config']
     rllib_config['env_config']['random_tile'] = False
     rllib_config['explore'] = False
     return rllib_config
@@ -224,7 +221,7 @@ def collect_metrics(
         lvl_dir=None):
 
     n_success = 0
-    config = parse_config(config_path)
+    config = load_config(config_path)
     rllib_config = prepare_config_for_inference(config_path)
     trainer = load_checkpoint(
             checkpoint_loader_type,
