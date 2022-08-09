@@ -205,12 +205,14 @@ def save_metrics(results, logdir, level_id):
     with open(Path(leveldir, 'cumulative_rewards.json'), 'w+') as f:
         f.write(json.dumps(results['cumulative_rewards']))
 
+def load_config(config_path):
+    return parse_config(config_path)
 
-def load_config_for_inference(config_path):
-    config = parse_config(config_path)['rllib_config']
-    config['env_config']['random_tile'] = False
-    config['explore'] = False
-    return config
+def prepare_config_for_inference(config):
+    rllib_config = config['rllib_config']
+    rllib_config['env_config']['random_tile'] = False
+    rllib_config['explore'] = False
+    return rllib_config
 
 
 def collect_metrics(
@@ -222,11 +224,20 @@ def collect_metrics(
         lvl_dir=None):
 
     n_success = 0
-    config = load_config_for_inference(config_path)
-    trainer = load_checkpoint(checkpoint_loader_type, experiment_path, config)
+    config = parse_config(config_path)
+    rllib_config = load_config_for_inference(config_path)
+    trainer = load_checkpoint(
+            checkpoint_loader_type,
+            experiment_path,
+            rllib_config
+            )
 
-    env = build_env(config['env'], config['env_config'], config['is_parallel'])
-    policy_mapping_fn = config['multiagent']['policy_mapping_fn']
+    env = build_env(
+            rllib_config['env'],
+            rllib_config['env_config'],
+            config['is_parallel']
+            )
+    policy_mapping_fn = rllib_config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
         if lvl_dir is None:
             initial_level=None
