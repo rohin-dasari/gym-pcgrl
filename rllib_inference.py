@@ -225,7 +225,7 @@ def collect_metrics(
 
     n_success = 0
     config = parse_config(config_path)
-    rllib_config = load_config_for_inference(config_path)
+    rllib_config = prepare_config_for_inference(config_path)
     trainer = load_checkpoint(
             checkpoint_loader_type,
             experiment_path,
