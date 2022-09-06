@@ -4,8 +4,9 @@ utilities for parsing config and running experiments
 import yaml
 from ray import tune
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv, ParallelPettingZooEnv
-from gym_pcgrl.parallel_multiagent_wrappers import MARL_CroppedImagePCGRLWrapper_Parallel
-from gym_pcgrl.multiagent_wrappers import MARL_CroppedImagePCGRLWrapper
+from gym.spaces import Dict, Discrete, Tuple, MultiDiscrete
+from gym_pcgrl.wrappers import MARL_CroppedImagePCGRLWrapper_Parallel
+from gym_pcgrl.wrappers import MARL_CroppedImagePCGRLWrapper
 
 def gen_policy(obs_space, action_space, model):
     pass
@@ -42,6 +43,53 @@ def env_maker_factory(env_name, is_parallel):
                 )
     return env_maker
 
+
+def parse_qmix_config(config_file):
+    """
+    """
+    # register environment with grouped wrappers
+
+    config = load_config(config_file)
+
+    is_parallel = 'Parallel' in config['rllib_trainer_config']['env']
+    env_maker = env_maker_factory(
+            config['rllib_trainer_config']['env'],
+            config['is_parallel']
+            )
+    env = env_maker(config['rllib_trainer_config']['env_config'])
+    # what classifies as global state?
+        # un-cropped / padded map
+        # other agent positions
+    # Make wrapper to generate global and local states
+
+    agents = env.possible_agents
+    sample_agent = agents[0]
+    obs_space = Tuple(
+        [
+            
+        ]
+    )
+    obs_space = env.observation_spaces[sample_agent]
+    action_space = env.action_spaces[sample_agent]
+
+    # make grouped version of environment
+    env = env_maker(config['rllib_trainer_config']['env_config'])
+    # wrap environment in GroupeAgentsWrapper (rllib.env.wrappers.group_agentsa_wrapper)
+    # defined groups
+    # convert obs and act spaces to tuples
+
+
+    # add model config
+    #config  = {
+    #    'mixer': ,
+    #    'env_config': ,
+    #    'env': 'QMIX', 
+
+
+    #}
+    
+    pass
+
 def parse_rllib_config(config_file):
     """
     construct a valid rllib trainer config from a flat config
@@ -54,9 +102,6 @@ def parse_rllib_config(config_file):
             config['rllib_trainer_config']['env'],
             config['is_parallel']
             )
-    #def env_maker(env_config):
-    #    return MARL_CroppedImagePCGRLWrapper(config['env'], 28, **config)
-    #tune.register_env(config['env'], lambda config: ParallelPettingZooEnv(env_maker(config)))
 
     env = env_maker(config['rllib_trainer_config']['env_config'])
     sample_agent = env.possible_agents[0]
@@ -65,13 +110,14 @@ def parse_rllib_config(config_file):
 
     policy_mapping_fn = lambda agent: f'policy_{agent}'
     policies = {f'policy_{agent}': gen_policy(obs_space, action_space, config['model_config']) for agent in env.possible_agents}
+    # RLLIB parameters
+    # env
+    # env_config
+    # num_gpus
+    # framework
+    # render_env
     return {
             **config['rllib_trainer_config'],
-            #'env': config['env'],
-            #'env_config': config['env_config'],
-            #'num_gpus': config['num_gpus'],
-            #'framework': config['framework'],
-            #'render_env': config['render_env'],
             'multiagent': {
                 'policies': policies,
                 'policy_mapping_fn': policy_mapping_fn
@@ -93,13 +139,6 @@ def parse_tune_config(config_file):
     return {
             'run_or_experiment': config['algorithm'],
             **config['tune_api_config'],
-            #'stop': config['stop'],
-            #'mode': config['mode'],
-            #'metric': config['metric'],
-            #'checkpoint_score_attr': config['checkpoint_score_attr'],
-            #'keep_checkpoints_num': config['keep_checkpoints_num'],
-            #'checkpoint_freq': config['checkpoint_freq'],
-            #'checkpoint_at_end' : config['checkpoint_at_end'],
             }
 
 def parse_config(config_file):

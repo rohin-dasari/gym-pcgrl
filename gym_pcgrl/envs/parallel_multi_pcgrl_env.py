@@ -66,6 +66,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         self.action_spaces = self._get_action_spaces()
         self.observation_spaces = self._get_observation_spaces()
 
+        self.observation = None
+
 
     """
     convert an integer action id to a human readable action

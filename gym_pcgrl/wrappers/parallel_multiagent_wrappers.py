@@ -5,7 +5,7 @@ import numpy as np
 import math
 import os
 
-from gym_pcgrl.wrapper_utils import get_env
+from .wrapper_utils import get_env
 
 MAPCGRL_ENV = 'Parallel_MAPcgrlEnv'
 

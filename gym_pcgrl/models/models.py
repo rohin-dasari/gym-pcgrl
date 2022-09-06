@@ -59,6 +59,13 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
         return th.reshape(self.value_branch(self._features), [-1])
 
     def forward(self, input_dict, state, seq_lens):
+        #raise ValueError(f'dims: {input_dict["obs"].shape}')
+        input_dict['obs'] = input_dict['obs'].reshape(
+                input_dict['obs'].size(0), 
+                28, 
+                28, 
+                1
+            )
         input = input_dict["obs"].permute(0, 3, 1, 2)  # Because rllib order tensors the tensorflow way (channel last)
         x = nn.functional.relu(self.conv_1(input.float()))
         x = nn.functional.relu(self.conv_2(x))

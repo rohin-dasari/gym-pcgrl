@@ -1,16 +1,13 @@
-from gym_pcgrl.envs.pcgrl_env import PcgrlEnv
-from gym_pcgrl.envs.probs import PROBLEMS
-from gym_pcgrl.envs.reps import REPRESENTATIONS
-from gym_pcgrl.envs.helper import get_int_prob, get_string_map
-from .parallel_multi_pcgrl_env import Parallel_MAPcgrlEnv
-
-import functools
 import numpy as np
 import gym
 from gym import spaces
 import PIL
 from pettingzoo import AECEnv
 from pettingzoo.utils import agent_selector
+
+from gym_pcgrl.envs.helper import get_string_map
+from .parallel_multi_pcgrl_env import Parallel_MAPcgrlEnv
+
 
 
 class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
@@ -57,7 +54,6 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         if self.dones[agent]:
             return self._was_done_step(action)
 
-        self._iteration += 1
         self.agent_actions_history[agent].append(action)
 
         # update cumulative rewards
@@ -88,6 +84,7 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         self.observations = observations
 
         if self._agent_selector.is_last():
+            self._iteration += 1
             # update rewards for all agents
             reward = self._prob.get_reward(self._rep_stats, old_stats)
             self.rewards = {agent: reward for agent in self.agents}
@@ -113,7 +110,7 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
 
         # petting zoo does not require that step() returns these elements,
         # but gym wrappers do
-        #return self.observations, self.rewards[agent], self.dones, self.infos
+        # return all observations for all agents
         return self.observations, self.rewards, self.dones, self.infos
 
     def get_tile_map(self):
@@ -121,6 +118,9 @@ class MAPcgrlEnv(Parallel_MAPcgrlEnv, AECEnv):
         obtain the mapping between the tile types and their integer encodings
         """
         return self._rep.tile_id_map
+
+    def agent_is_last(self):
+        return self._agent_selector.is_last()
 
 
 
