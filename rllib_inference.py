@@ -8,6 +8,7 @@ from uuid import uuid4
 from ray import tune
 from gym_pcgrl.utils import parse_config, load_config
 import ray.rllib.agents.ppo as ppo
+import ray.rllib.agents.qmix as qmix
 from gym_pcgrl.utils import env_maker_factory
 import pandas as pd
 import json
@@ -19,9 +20,12 @@ mpl.use('Agg')
 import matplotlib.pylab as plt
 
 
+from qmix_test import make_grouped_env, register_grouped_env
+
 
 def restore_trainer(checkpoint_path, config):
-    trainer = ppo.PPOTrainer(config=config)
+    trainer = qmix.QMixTrainer(config=config)
+    #trainer = ppo.PPOTrainer(config=config)
     trainer.restore(str(checkpoint_path))
     return trainer
 
@@ -37,6 +41,24 @@ def get_agent_actions(trainer, observations, policy_mapping_fn):
         policy_id = policy_mapping_fn(agent_id)
         actions[agent_id] = trainer.compute_single_action(agent_obs, policy_id=policy_id)
     return actions
+
+def qmix_get_agent_actions(trainer, observations):
+    actions = {}
+    #import pdb; pdb.set_trace()
+    # observations must be passed as a tuple
+    actions = trainer.compute_single_action(tuple(observations.values()))
+    thing = {agent: action for agent, action in zip(observations.keys(), actions)}
+    return thing
+    #import pdb; pdb.set_trace()
+    #for agent_id, agent_obs in observations.items():
+    #    try:
+    #        actions[agent_id] = trainer.compute_action(
+    #                    agent_obs,
+    #                )
+    #    except Exception as e:
+    #        #import pdb; pdb.set_trace()
+    #        raise ValueError(str(e)[:100])
+    #pass
 
 def collect_action_metadata(env, actions):
     # collect timestep, agent, action, x_pos, y_pos
@@ -55,12 +77,15 @@ def collect_action_metadata(env, actions):
         data.append(metadata)
     return data
 
-def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
+def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=None):
     done = False
     obs = env.reset()
     agent_positions = {}
 
-    rawobs = env.set_state(initial_level=initial_level, initial_positions=env.get_agent_positions())
+    rawobs = env.set_state(
+                initial_level = initial_level,
+                initial_positions = env.get_agent_positions()
+            )
     obs = env.transform_observations(rawobs)
 
     frames = []
@@ -71,7 +96,8 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
     frames.append(env.render(mode='rgb_array'))
     initial_map = env.get_map()
     while not done:
-        actions = get_agent_actions(trainer, obs, policy_mapping_fn)
+        actions = qmix_get_agent_actions(trainer, obs)
+        #actions = get_agent_actions(trainer, obs, policy_mapping_fn)
         action_metadata = collect_action_metadata(env, actions)
         obs, rew, done, info = env.step(actions)
         frame = env.render(mode='rgb_array')
@@ -87,7 +113,7 @@ def rollout(env, trainer, policy_mapping_fn, render=True, initial_level=None):
             'actions': action_data,
             'info': infos,
             'agent_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
-            'tile_heatmaps': env.get_agent_heatmaps(), # spatial information about changes
+            'tile_heatmaps': env.get_tile_heatmaps(), # spatial information about changes
             'legend': env.get_agent_color_mapping(),
             'cumulative_rewards': env.get_cumulative_rewards()
             }
@@ -141,8 +167,11 @@ def get_latest_checkpoint(experiment_path, config):
     return latest_checkpoint
 
 def get_checkpoint_by_name(experiment_path, checkpoint_name, config):
-    checkpoint_path = Path(experiment_path, checkpoint_name, f"checkpoint-{checkpoint_name.split('_')[1].lstrip('0')}")
-    #'checkpoint-{checkpoint_name.split('_')[1].lstrip('0')}'
+    checkpoint_path = Path(
+                experiment_path,
+                checkpoint_name,
+                f"checkpoint-{checkpoint_name.split('_')[1].lstrip('0')}"
+            )
     trainer = restore_trainer(checkpoint_path, config)
     print(f'Loaded from checkpoint: {checkpoint_name}')
     return trainer
@@ -211,6 +240,9 @@ def prepare_config_for_inference(config_path):
     rllib_config['explore'] = False
     return rllib_config
 
+def qmix_get_unwrapped_env(env):
+    # wow, I love gym and rllib :)!
+    return env.to_base_env()._unwrapped_env.env
 
 def collect_metrics(
         config_path,
@@ -221,26 +253,62 @@ def collect_metrics(
         lvl_dir=None):
 
     n_success = 0
-    config = load_config(config_path)
-    rllib_config = prepare_config_for_inference(config_path)
+    #config = load_config(config_path) # why am I loading config twice?
+    #rllib_config = prepare_config_for_inference(config_path)
+
+    config = {
+            "rollout_fragment_length": 4,
+            "train_batch_size": 32,
+            "exploration_config": {
+                "final_epsilon": 0.0,
+            },
+            "num_workers": 0,
+            "mixer": 'qmix',
+            "env_config": {
+                "binary": True,
+                'random_tile': False
+            },
+            # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
+            "num_gpus": 0,
+            'model': {
+                'custom_model': 'CustomFeedForwardModel'
+                },
+            'env': 'grouped_env',
+            'explore': False
+            }
+
+    env = qmix_get_unwrapped_env(
+            make_grouped_env(
+                    'Parallel_MAPcgrl-binary-narrow-v0',
+                    28,
+                    **config['env_config']
+                )
+            )
+    register_grouped_env()
     trainer = load_checkpoint(
             checkpoint_loader_type,
             experiment_path,
-            rllib_config
+            #rllib_config
+            config
             )
 
-    env = build_env(
-            rllib_config['env'],
-            rllib_config['env_config'],
-            config['is_parallel']
-            )
-    policy_mapping_fn = rllib_config['multiagent']['policy_mapping_fn']
+    #env = build_env(
+    #        rllib_config['env'],
+    #        rllib_config['env_config'],
+    #        config['is_parallel']
+    #        )
+    #env = build_env(
+    #        'Parallel_MAPcgrl-binary-narrow-v0', config['env_config'], True
+    #        )
+
+    #policy_mapping_fn = rllib_config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
         if lvl_dir is None:
             initial_level=None
         else:
             initial_level = load_level(lvl_dir, i)
-        results = rollout(env, trainer, policy_mapping_fn, initial_level=initial_level)
+        #results = rollout(env, trainer, policy_mapping_fn, initial_level=initial_level)
+        results = rollout(env, trainer, None, initial_level=initial_level)
         n_success += results['success']
         save_metrics(results, out_path, str(i))
 
@@ -293,7 +361,7 @@ if __name__ == '__main__':
             dest='config_path',
             type=str,
             help='path to configuration file used during training',
-            required=True
+            required=False
             )
 
     parser.add_argument(

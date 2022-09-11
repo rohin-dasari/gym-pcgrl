@@ -50,3 +50,7 @@ eval/
 # vs config
 *.vs
 *.idea
+
+# rllib files
+experiments/
+

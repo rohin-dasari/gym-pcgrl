@@ -17,7 +17,7 @@ class GroupedWrapper(MultiAgentEnv, gym.Wrapper):
         # modify the observation and action space to be tuples
         # wrap env in grouped Wrapper
         self.env = get_env(env)
-        super().__init__(self.env)
+        super().__init__()
         self._agent_ids = set(self.env.possible_agents)
         sample_agent = self.env.possible_agents[0]
         self.observation_space = self.env.observation_space(sample_agent)
@@ -32,3 +32,12 @@ class GroupedWrapper(MultiAgentEnv, gym.Wrapper):
 
     def step(self, actions):
         return self.env.step(actions)
+
+    def set_state(self, initial_level, initial_positions):
+        return self.env.set_state(
+                    initial_level,
+                    initial_positions
+                )
+    def render(self, mode='human'):
+        return self.env.render(mode)
+

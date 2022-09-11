@@ -237,7 +237,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         img: the modified level image
     """
     def render(self, lvl_image, tile_size, border_size):
-        colors = [(255, 0, 0, 255), (0, 255, 0, 255)] # expand to handle more agents
+        colors = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)] # expand to handle more agents
         self.agent_color_mapping = {agent: color for agent, color in zip(self.agents, colors)}
         for agent, color in self.agent_color_mapping.items():
             rect = self.draw_rect(tile_size, color)

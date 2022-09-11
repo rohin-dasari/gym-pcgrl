@@ -98,8 +98,18 @@ class BinaryProblem(Problem):
     def get_reward(self, new_stats, old_stats):
         #longer path is rewarded and less number of regions is rewarded
         rewards = {
-            "regions": get_range_reward(new_stats["regions"], old_stats["regions"], 1, 1),
-            "path-length": get_range_reward(new_stats["path-length"],old_stats["path-length"], np.inf, np.inf)
+            "regions": get_range_reward(
+                            new_stats["regions"],
+                            old_stats["regions"],
+                            1,
+                            1
+                        ),
+            "path-length": get_range_reward(
+                                new_stats["path-length"],
+                                old_stats["path-length"],
+                                np.inf,
+                                np.inf
+                            )
         }
         #calculate the total reward
         return rewards["regions"] * self._rewards["regions"] +\
