@@ -77,11 +77,16 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         # there is a unique agent for each tile type
         self.agent_positions = {}
         if initial_positions is None:
-            for agent in self.agents:
+            for i, agent in enumerate(self.agents):
+                # To Do: Hardcoded fixed starting positions
                 self.agent_positions[agent] = {
-                            'x': self._random.randint(width),
-                            'y': self._random.randint(height)
+                            'x': 0,
+                            'y': i,
                         }
+                #self.agent_positions[agent] = {
+                #            'x': self._random.randint(width),
+                #            'y': self._random.randint(height)
+                #        }
         else:
             self.agent_positions = initial_positions
 

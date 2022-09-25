@@ -58,7 +58,11 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         self._iteration = 0
         self._changes = 0
         self._max_changes = max(int(change_percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+
+        if 'max_iterations' in kwargs:
+            self._max_iterations = kwargs['max_iterations']
+        else:
+            self._max_iterations = self._max_changes * self._prob._width * self._prob._height
 
         self.seed()
         self.viewer = None
@@ -172,6 +176,9 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
     def reset_rewards(self):
         self.rewards = {agent: 0 for agent in self.agents}
+
+    def get_iteration(self):
+        return self._iteration
 
     def reset(self, initial_level=None, initial_positions=None):
         self.agents = self.possible_agents[:]
@@ -317,9 +324,10 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         old_stats: stats regarding the representation from the previous timestep
     """
     def check_done(self, new_stats, old_stats):
-        return self.check_success() or \
-                self._changes >= self._max_changes or \
-                self._iteration >= self._max_iterations
+        return self._iteration >= self._max_iterations
+        #return self.check_success() or \
+        #        self._changes >= self._max_changes or \
+        #        self._iteration >= self._max_iterations
 
     def check_success(self):
         return self._prob.get_episode_over(self._rep_stats)

@@ -7,6 +7,5 @@ services:
         volumes:
             - ".:/work"
             - "~/ray_results:/home/ray/ray_results"
-            - "/home/rdasari/qmix_run:/home/ray/qmix_run"
         working_dir: /work
         shm_size: 4gb # docker-compose version 3.3 can only accept integer values for shm_size

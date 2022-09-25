@@ -159,6 +159,31 @@ def test_against_single_agent_env(sample_level):
         assert multi_rewards[0] == single_rewards
 
 
+def test_max_iterations_limit(binary_env):
+    
+
+    env_config = {
+                'num_agents': None,
+                'binary_actions': True,
+                'max_iterations': 500
+                }
+    env = gym.make('Parallel_MAPcgrl-binary-narrow-v0', **env_config)
+    env.reset()
+    print(env.possible_agents)
+
+    # NOTE: at the time of writing this test, all end conditions, other than
+    # the max iterations, have been removed
+    for i in range(env_config['max_iterations']):
+        actions = {'empty': 0, 'solid': 0}
+        _, _, done, _ = env.step(actions)
+        if env.get_iteration() < env_config['max_iterations']:
+            assert done['__all__'] == False
+        else:
+            assert done['__all__'] == True
+
+    
+
+
 #"""
 #There are three possible conditions that can lead to a finished environment:
 #    changes >= max_changes
