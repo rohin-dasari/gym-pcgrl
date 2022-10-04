@@ -59,6 +59,7 @@ class CustomFeedForwardModel(TorchModelV2, nn.Module):
         return th.reshape(self.value_branch(self._features), [-1])
 
     def forward(self, input_dict, state, seq_lens):
+        import pdb; pdb.set_trace()
         #raise ValueError(f'dims: {input_dict["obs"].shape}')
         input_dict['obs'] = input_dict['obs'].reshape(
                 input_dict['obs'].size(0), 

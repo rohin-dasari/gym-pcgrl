@@ -45,7 +45,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         else:
             assert num_agents is not None, "The number of agents must be explicitly provided"
             self.possible_agents = list(range(num_agents))
-        self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
+
 
         # random_tile will be False by default (if it is not passed as an argument)
         self._rep = REPRESENTATIONS[rep](
