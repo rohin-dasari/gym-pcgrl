@@ -63,6 +63,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             self._max_iterations = kwargs['max_iterations']
         else:
             self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+        self.args = kwargs
 
         self.seed()
         self.viewer = None
@@ -174,11 +175,12 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     def get_iteration(self):
         return self._iteration
 
+    def get_max_iterations(self):
+        return self._max_iterations
+
     def reset_rewards(self):
         self.rewards = {agent: 0 for agent in self.agents}
 
-    def get_iteration(self):
-        return self._iteration
 
     def reset(self, initial_level=None, initial_positions=None):
         self.agents = self.possible_agents[:]
@@ -346,7 +348,10 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         if 'change_percentage' in kwargs:
             percentage = min(1, max(0, kwargs.get('change_percentage')))
             self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+        if 'max_iterations' in kwargs:
+            self._max_iterations = kwargs['max_iterations']
+        else:
+            self._max_iterations = self._max_changes * self._prob._width * self._prob._height
         self._prob.adjust_param(**kwargs)
         self._rep.adjust_param(**kwargs)
         self.action_spaces = self._get_action_spaces()

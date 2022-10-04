@@ -181,16 +181,16 @@ class MARL_CroppedImagePCGRLWrapper_Parallel(gym.Wrapper):
         #self.pcgrl_env.adjust_param(**kwargs)
         # Cropping the map to the correct crop_size
         envs = []
-        cropped_env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map')
+        cropped_env = MARL_Cropped_Parallel(self.pcgrl_env, crop_size, self.pcgrl_env.get_border_tile(), 'map', **kwargs)
         envs.append(cropped_env)
         # Transform to one hot encoding if not binary
         if 'binary' not in game:
-            onehot_env = MARL_OneHotEncoding_Parallel(cropped_env, 'map')
+            onehot_env = MARL_OneHotEncoding_Parallel(cropped_env, 'map', **kwargs)
             envs.append(onehot_env)
         ## Indices for flatting
         flat_indices = ['map']
         ### Final Wrapper has to be ToImage or ToFlat
-        toimage_env = MARL_ToImage_Parallel(envs[-1], flat_indices)
+        toimage_env = MARL_ToImage_Parallel(envs[-1], flat_indices, **kwargs)
         envs.append(toimage_env)
         self.env = toimage_env
         self.envs = envs
