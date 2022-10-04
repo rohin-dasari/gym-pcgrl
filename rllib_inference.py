@@ -105,6 +105,7 @@ def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=Non
         action_data.extend(action_metadata)
         infos.append(env.get_metadata())
         done = done['__all__']
+    print(env.get_iteration())
     return {
             'success': env.check_success(),
             'initial_map': initial_map,
@@ -266,7 +267,8 @@ def collect_metrics(
             "mixer": 'qmix',
             "env_config": {
                 "binary": True,
-                'random_tile': False
+                'random_tile': False,
+                'max_iterations': 500
             },
             # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
             "num_gpus": 0,
@@ -284,6 +286,7 @@ def collect_metrics(
                     **config['env_config']
                 )
             )
+
     register_grouped_env()
     trainer = load_checkpoint(
             checkpoint_loader_type,
