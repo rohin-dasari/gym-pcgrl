@@ -1,4 +1,5 @@
 import warnings
+from copy import copy
 from gym_pcgrl.envs.reps.narrow_rep import NarrowRepresentation
 from PIL import Image
 from gym import spaces
@@ -25,6 +26,7 @@ def reset_check(method):
             warnings.warn(f'The environment should be reset before calling {method.__name__}', RuntimeWarning)
         return method(*args, **kwargs)
     return _wrapper
+
 
 
 
@@ -80,8 +82,8 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
             for i, agent in enumerate(self.agents):
                 # To Do: Hardcoded fixed starting positions
                 self.agent_positions[agent] = {
-                            'x': 0,
-                            'y': i,
+                            'x': i,
+                            'y': 0,
                         }
                 #self.agent_positions[agent] = {
                 #            'x': self._random.randint(width),
@@ -175,18 +177,19 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     def apply_action(self, agent, action):
         change = 0
         pos = self.agent_positions[agent]
-        x, y = pos['x'], pos['y']
+        curr_x, curr_y = pos['x'], pos['y']
+        width, height = self._map.shape[1], self._map.shape[0]
 
         if action != 0:
             if self.binary_actions:
                 tile_id = self.tile_id_map[agent]
             else:
                 tile_id = action - 1
-            change += int(self._map[y][x] != tile_id)
-            self._map[y][x] = tile_id
+            change += int(self._map[curr_y][curr_x] != tile_id)
+            self._map[curr_y][curr_x] = tile_id
 
         # update for the agent's next position
-        width, height = self._map.shape[1], self._map.shape[0]
+        x, y = curr_x, curr_y
         if self._random_tile:
             x = self._random.randint(width)
             y = self._random.randint(height)
@@ -197,11 +200,8 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
                 y += 1
                 if y >= height:
                     y = 0
-        # update positions
-        pos['x'] = x
-        pos['y'] = y
-        self.agent_positions[agent] = pos
-        return change, x, y # return number of changes and new position
+        self.agent_positions[agent] = {'x': x, 'y': y}
+        return change, curr_x, curr_y # return number of changes and old position
 
     """
     """

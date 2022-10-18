@@ -309,7 +309,6 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
             tile_id = action - 1
             tile_type = self.tile_types[tile_id]
             self._tile_heatmaps[tile_type][y][x] += 1.0
-            pass
         return change
 
     """

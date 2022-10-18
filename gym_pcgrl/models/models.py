@@ -87,7 +87,7 @@ class CustomFeedForwardModel3D(TorchModelV2, nn.Module):
                  model_config,
                  name,
                 #  conv_filters=64,
-                 fc_size=128,
+                fc_size=2048,
                  ):
         nn.Module.__init__(self)
         super().__init__(obs_space, action_space, num_outputs, model_config,
@@ -111,11 +111,14 @@ class CustomFeedForwardModel3D(TorchModelV2, nn.Module):
         self.conv_3 = nn.Conv3d(128, out_channels=128, kernel_size=3, stride=2, padding=1)  # 2 * 2 * 2 
 
         # Fully connected layer.
-        self.fc_1 = SlimFC(self.pre_fc_size, fc_size)
+        #self.fc_1 = SlimFC(self.pre_fc_size, fc_size)
+        self.fc_1 = SlimFC(2048, 128)
 
         # Fully connected action and value heads.
-        self.action_branch = SlimFC(fc_size, num_outputs)
-        self.value_branch = SlimFC(fc_size, 1)
+        #self.action_branch = SlimFC(fc_size, num_outputs)
+        self.action_branch = SlimFC(128, num_outputs)
+        #self.value_branch = SlimFC(fc_size, 1)
+        self.value_branch = SlimFC(128, 1)
 
         # Holds the current "base" output (before logits layer).
         self._features = None

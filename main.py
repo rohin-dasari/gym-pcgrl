@@ -9,7 +9,8 @@ def train(config_path):
     parsed_configs = parse_config(config_path)
     results = tune.run(
                 **parsed_configs['tune_config'],
-                config=parsed_configs['rllib_config']
+                config=parsed_configs['rllib_config'],
+                log_to_file=True
             )
 
 

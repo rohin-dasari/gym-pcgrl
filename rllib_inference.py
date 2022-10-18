@@ -47,18 +47,7 @@ def qmix_get_agent_actions(trainer, observations):
     #import pdb; pdb.set_trace()
     # observations must be passed as a tuple
     actions = trainer.compute_single_action(tuple(observations.values()))
-    thing = {agent: action for agent, action in zip(observations.keys(), actions)}
-    return thing
-    #import pdb; pdb.set_trace()
-    #for agent_id, agent_obs in observations.items():
-    #    try:
-    #        actions[agent_id] = trainer.compute_action(
-    #                    agent_obs,
-    #                )
-    #    except Exception as e:
-    #        #import pdb; pdb.set_trace()
-    #        raise ValueError(str(e)[:100])
-    #pass
+    return {agent: action for agent, action in zip(observations.keys(), actions)}
 
 def collect_action_metadata(env, actions):
     # collect timestep, agent, action, x_pos, y_pos
@@ -97,6 +86,7 @@ def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=Non
     initial_map = env.get_map()
     while not done:
         actions = qmix_get_agent_actions(trainer, obs)
+        actions['empty'] = 0 # hardcode solid agent to no-op
         #actions = get_agent_actions(trainer, obs, policy_mapping_fn)
         action_metadata = collect_action_metadata(env, actions)
         obs, rew, done, info = env.step(actions)
@@ -105,7 +95,6 @@ def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=Non
         action_data.extend(action_metadata)
         infos.append(env.get_metadata())
         done = done['__all__']
-    print(env.get_iteration())
     return {
             'success': env.check_success(),
             'initial_map': initial_map,
