@@ -5,16 +5,18 @@ rllib_trainer_config:
     env: Parallel_MAPcgrl-zelda-narrow-v0
     env_config:
         binary_actions: True
-    num_gpus: 0
+        max_iterations: 500
+        num_gpus: 0
     framework: torch
     output: experiments
     render_env: false
     lr: 0.0001
+    disable_env_checking: true
 tune_api_config:
     ####################
     # Tune API parameters
     stop:
-        training_iteration: 2
+        training_iteration: 10000
     mode: max
     metric: episode_reward_mean
     checkpoint_score_attr: episode_reward_mean

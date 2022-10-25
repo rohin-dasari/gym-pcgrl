@@ -36,11 +36,12 @@ def make_grouped_env(env_name, crop_size, **kwargs):
                                             act_space = tuple_act_space
                                         )
 
-def register_grouped_env():
+def register_grouped_env(env_name):
     register_env(
             'grouped_env',
             lambda config: make_grouped_env(
-                            'Parallel_MAPcgrl-binary-narrow-v0',
+                            #'Parallel_MAPcgrl-binary-narrow-v0',
+                            env_name,
                             28,
                             **config
                         )
@@ -48,7 +49,9 @@ def register_grouped_env():
 
 
 if __name__ == '__main__':
-    register_grouped_env()
+    env_name = 'Parallel_MAPcgrl-binary-narrow-v0'
+    #env_name = 'Parallel_MAPcgrl-zelda-narrow-v0'
+    register_grouped_env(env_name)
     config = {
             "rollout_fragment_length": 4,
             "train_batch_size": 32,

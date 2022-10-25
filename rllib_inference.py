@@ -24,8 +24,9 @@ from qmix_test import make_grouped_env, register_grouped_env
 
 
 def restore_trainer(checkpoint_path, config):
-    trainer = qmix.QMixTrainer(config=config)
-    #trainer = ppo.PPOTrainer(config=config)
+    #trainer = qmix.QMixTrainer(config=config)
+    trainer = ppo.PPOTrainer(config=config)
+    print(checkpoint_path)
     trainer.restore(str(checkpoint_path))
     return trainer
 
@@ -85,9 +86,9 @@ def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=Non
     frames.append(env.render(mode='rgb_array'))
     initial_map = env.get_map()
     while not done:
-        actions = qmix_get_agent_actions(trainer, obs)
-        actions['empty'] = 0 # hardcode solid agent to no-op
-        #actions = get_agent_actions(trainer, obs, policy_mapping_fn)
+        #actions = qmix_get_agent_actions(trainer, obs)
+        #actions['empty'] = 0 # hardcode solid agent to no-op
+        actions = get_agent_actions(trainer, obs, policy_mapping_fn)
         action_metadata = collect_action_metadata(env, actions)
         obs, rew, done, info = env.step(actions)
         frame = env.render(mode='rgb_array')
@@ -243,64 +244,64 @@ def collect_metrics(
         lvl_dir=None):
 
     n_success = 0
-    #config = load_config(config_path) # why am I loading config twice?
-    #rllib_config = prepare_config_for_inference(config_path)
+    config = load_config(config_path) # why am I loading config twice?
+    rllib_config = prepare_config_for_inference(config_path)
 
-    config = {
-            "rollout_fragment_length": 4,
-            "train_batch_size": 32,
-            "exploration_config": {
-                "final_epsilon": 0.0,
-            },
-            "num_workers": 0,
-            "mixer": 'qmix',
-            "env_config": {
-                "binary": True,
-                'random_tile': False,
-                'max_iterations': 500
-            },
-            # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
-            "num_gpus": 0,
-            'model': {
-                'custom_model': 'CustomFeedForwardModel'
-                },
-            'env': 'grouped_env',
-            'explore': False
-            }
+    #config = {
+    #        "rollout_fragment_length": 4,
+    #        "train_batch_size": 32,
+    #        "exploration_config": {
+    #            "final_epsilon": 0.0,
+    #        },
+    #        "num_workers": 0,
+    #        "mixer": 'qmix',
+    #        "env_config": {
+    #            "binary": True,
+    #            'random_tile': False,
+    #            'max_iterations': 500
+    #        },
+    #        # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
+    #        "num_gpus": 0,
+    #        'model': {
+    #            'custom_model': 'CustomFeedForwardModel'
+    #            },
+    #        'env': 'grouped_env',
+    #        'explore': False
+    #        }
 
-    env = qmix_get_unwrapped_env(
-            make_grouped_env(
-                    'Parallel_MAPcgrl-binary-narrow-v0',
-                    28,
-                    **config['env_config']
-                )
-            )
+    #env = qmix_get_unwrapped_env(
+    #        make_grouped_env(
+    #                'Parallel_MAPcgrl-binary-narrow-v0',
+    #                28,
+    #                **config['env_config']
+    #            )
+    #        )
 
-    register_grouped_env()
+    #register_grouped_env()
     trainer = load_checkpoint(
             checkpoint_loader_type,
             experiment_path,
-            #rllib_config
-            config
+            rllib_config
+            #config
             )
 
-    #env = build_env(
-    #        rllib_config['env'],
-    #        rllib_config['env_config'],
-    #        config['is_parallel']
-    #        )
+    env = build_env(
+            rllib_config['env'],
+            rllib_config['env_config'],
+            config['is_parallel']
+            )
     #env = build_env(
     #        'Parallel_MAPcgrl-binary-narrow-v0', config['env_config'], True
     #        )
 
-    #policy_mapping_fn = rllib_config['multiagent']['policy_mapping_fn']
+    policy_mapping_fn = rllib_config['multiagent']['policy_mapping_fn']
     for i in tqdm(range(n_trials)):
         if lvl_dir is None:
             initial_level=None
         else:
             initial_level = load_level(lvl_dir, i)
-        #results = rollout(env, trainer, policy_mapping_fn, initial_level=initial_level)
-        results = rollout(env, trainer, None, initial_level=initial_level)
+        results = rollout(env, trainer, policy_mapping_fn, initial_level=initial_level)
+        #results = rollout(env, trainer, None, initial_level=initial_level)
         n_success += results['success']
         save_metrics(results, out_path, str(i))
 
@@ -310,7 +311,6 @@ def collect_metrics(
             'n_trials': n_trials,
             'checkpoint_loader': checkpoint_loader_type,
             'trainer_iteration': int(trainer._iteration)
-
             }
     with open(Path(out_path, 'metadata.json'), 'w+') as f:
         f.write(json.dumps(metadata))
