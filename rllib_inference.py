@@ -32,6 +32,7 @@ def restore_trainer(checkpoint_path, config):
 
 def build_env(env_name, env_config, is_parallel):
     env_maker = env_maker_factory(env_name, is_parallel)
+    env_config['render'] = True
     env = env_maker(env_config)
     return env
 
@@ -45,7 +46,6 @@ def get_agent_actions(trainer, observations, policy_mapping_fn):
 
 def qmix_get_agent_actions(trainer, observations):
     actions = {}
-    #import pdb; pdb.set_trace()
     # observations must be passed as a tuple
     actions = trainer.compute_single_action(tuple(observations.values()))
     return {agent: action for agent, action in zip(observations.keys(), actions)}
@@ -353,9 +353,16 @@ if __name__ == '__main__':
             dest='config_path',
             type=str,
             help='path to configuration file used during training',
-            required=False
+            required=True
             )
 
+    parser.add_argument(
+            '--level_dir',
+            '-l',
+            dest='level_dir',
+            type=str,
+            default=None
+            )
     parser.add_argument(
             '--out_path',
             '-o',
@@ -386,7 +393,7 @@ if __name__ == '__main__':
     #config_path = 'configs/binary_actions_maze.yaml'
     #config_path = args.config_path
     ## save a copy of the original config in the experiment location
-    lvl_dir = 'binary_levels'
+    #lvl_dir = 'binary_levels'
     #config = parse_config(config_path)['rllib_config']
     #config['env_config']['random_tile'] = False
     #config['explore'] = False
@@ -398,7 +405,7 @@ if __name__ == '__main__':
             args.experiment_path,
             args.out_path,
             n_trials=args.n_trials,
-            lvl_dir=lvl_dir
+            lvl_dir=args.level_dir
             )
     print(f'Success Rate: {success_count}')
     print(f'Successfully wrote evaluation results to: {args.out_path}')

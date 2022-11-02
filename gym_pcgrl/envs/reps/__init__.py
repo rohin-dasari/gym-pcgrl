@@ -5,6 +5,7 @@ from gym_pcgrl.envs.reps.wide_rep import WideRepresentation
 from gym_pcgrl.envs.reps.turtle_rep import TurtleRepresentation
 from gym_pcgrl.envs.reps.turtle_cast_rep import TurtleCastRepresentation
 from gym_pcgrl.envs.reps.marl_narrow import MARL_NarrowRepresentation
+from gym_pcgrl.envs.reps.marl_turtle import MARL_TurtleRepresentation
 
 # all the representations should be defined here with its corresponding class
 REPRESENTATIONS = {
@@ -14,5 +15,6 @@ REPRESENTATIONS = {
     "wide": WideRepresentation,
     "turtle": TurtleRepresentation,
     "turtlecast": TurtleCastRepresentation,
-    "marl_narrow": MARL_NarrowRepresentation
+    "marl_narrow": MARL_NarrowRepresentation,
+    "marl_turtle": MARL_TurtleRepresentation
 }

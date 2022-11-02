@@ -13,10 +13,10 @@ class TurtleRepresentation(Representation):
     """
     Initialize all the parameters used by that representation
     """
-    def __init__(self):
+    def __init__(self, warp=False):
         super().__init__()
         self._dirs = [(-1,0), (1,0), (0,-1), (0,1)]
-        self._warp = False
+        self._warp = warp
 
     """
     Resets the current representation where it resets the parent and the current
@@ -27,8 +27,8 @@ class TurtleRepresentation(Representation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
-        super().reset(width, height, prob)
+    def reset(self, width, height, prob, initial_level=None, initial_positions=None):
+        super().reset(width, height, prob, initial_level)
         self._x = self._random.randint(width)
         self._y = self._random.randint(height)
 

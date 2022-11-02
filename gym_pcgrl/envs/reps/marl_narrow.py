@@ -40,13 +40,13 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
     """
     # Note that random tile is set to a default value in the parent class
     # Here, we allow the user to override this value through the random_value parameter
-    def __init__(self, agents, tiles, random_tile=True, binary_actions=True):
+    def __init__(self, agents, tiles, random_tile=False, binary_actions=True):
         super().__init__()
 
         self.binary_actions = binary_actions
         if self.binary_actions:
             assert len(agents) == len(tiles), \
-                    "If you each agent to have isolated control over an " + \
+                    "If you each want agent to have isolated control over an " + \
                     "individual tile type, the number of agents must be " + \
                     "equal to the number of tiles in the problem"
 
@@ -62,7 +62,6 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         self.agent_positions = {}
         self._random_tile = random_tile
         self._reset = False
-
 
     """
     Resets the environment and the starting positions for each agent randomly
@@ -107,7 +106,7 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
         Discrete: the action space used by that narrow representation which
         correspond to which value for each tile type
     """
-    def get_action_space(self, width, height, num_tiles):
+    def get_action_space(self):
         num_actions = 2 if self.binary_actions else len(self.tiles) + 1
         return {agent: spaces.Discrete(num_actions) for agent in self.agents}
 
@@ -252,3 +251,12 @@ class MARL_NarrowRepresentation(NarrowRepresentation):
             y_pos_height = (self.agent_positions[agent]['y']+border_size[1]+1)*tile_size
             lvl_image.paste(rect, (x_pos, y_pos, x_pos_width, y_pos_height), rect)
         return lvl_image
+
+    def get_human_readable_action(self, agent, action):
+        if action == 0:
+            return 'no-op'
+        if self.binary_actions:
+            return f'place {agent}'
+        else:
+            tile_id = action - 1
+            return f'place {self.tiles[tile_id]}'

@@ -15,13 +15,13 @@ for prob in PROBLEMS.keys():
         register(
             id='Parallel_MAPcgrl-{}-{}-v0'.format(prob, rep),
             entry_point='gym_pcgrl.envs.parallel_multi_pcgrl_env:Parallel_MAPcgrlEnv',
-            kwargs={"prob": prob, "rep": f'marl_{rep}'}
+            kwargs={"prob": prob, "rep": rep}
         )
 
         register(
             id='MAPcgrl-{}-{}-v0'.format(prob, rep),
             entry_point='gym_pcgrl.envs.multi_pcgrl_env:MAPcgrlEnv',
-            kwargs={"prob": prob, "rep": f'marl_{rep}'}
+            kwargs={"prob": prob, "rep": rep}
         )
 
 

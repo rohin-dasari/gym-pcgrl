@@ -34,6 +34,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
                 rep="marl_narrow",
                 binary_actions=True,
                 change_percentage=0.2,
+                rep_kwargs={},
                 **kwargs
             ):
 
@@ -52,7 +53,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
                     self.possible_agents,
                     tiles=self.tile_types,
                     binary_actions=binary_actions,
-                    random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False
+                    **rep_kwargs,
+                    #random_tile=True if 'random_tile' in kwargs and kwargs['random_tile'] else False
                 )
         self._rep_stats = None
         self._iteration = 0
@@ -78,13 +80,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     convert an integer action id to a human readable action
     """
     def get_human_action(self, agent, action):
-        if action == 0:
-            return 'no-op'
-        if self.binary_actions:
-            return f'place {agent}'
-        else:
-            tile_id = action - 1
-            return f'place {self.tile_types[tile_id]}'
+        return self._rep.get_human_action(agent, action)
 
     def get_agent_heatmaps(self):
         return self._agent_heatmaps
@@ -105,11 +101,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     """
     """
     def _get_action_spaces(self):
-        return self._rep.get_action_space(
-                    self._prob._width,
-                    self._prob._height,
-                    self.get_num_tiles()
-                )
+        return self._rep.get_action_space()
 
     """
     """

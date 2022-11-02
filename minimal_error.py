@@ -9,6 +9,7 @@ if __name__ == "__main__":
         return PettingZooEnv(waterworld_v3.env())
 
     env = env_creator({})
+    import pdb;pdb.set_trace()
     register_env("waterworld", env_creator)
 
     obs_space = env.observation_space

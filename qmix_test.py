@@ -49,11 +49,11 @@ def register_grouped_env(env_name):
 
 
 if __name__ == '__main__':
-    env_name = 'Parallel_MAPcgrl-binary-narrow-v0'
+    env_name = 'Parallel_MAPcgrl-binary-marl_turtle-v0'
     #env_name = 'Parallel_MAPcgrl-zelda-narrow-v0'
     register_grouped_env(env_name)
     config = {
-            "rollout_fragment_length": 4,
+            "rollout_fragment_length": 1,
             "train_batch_size": 32,
             "exploration_config": {
                 "final_epsilon": 0.0,

@@ -1,0 +1,31 @@
+algorithm: PPO
+is_parallel: true
+rllib_trainer_config:
+    # Rllib trainer config
+    env: Parallel_MAPcgrl-zelda-marl_turtle-v0
+    env_config:
+        binary_actions: true
+        rep_kwargs: 
+            warp: false
+        max_iterations: 500
+    num_gpus: 0
+    framework: torch
+    output: experiments
+    render_env: false
+    disable_env_checking: true
+tune_api_config:
+    ####################
+    # Tune API parameters
+    stop:
+        training_iteration: 2
+    mode: max
+    metric: episode_reward_mean
+    checkpoint_score_attr: episode_reward_mean
+    keep_checkpoints_num: 3
+    checkpoint_freq: 1
+    checkpoint_at_end: true
+####################
+# model config
+model_config: 
+    custom_model: CustomFeedForwardModel3D
+####################
