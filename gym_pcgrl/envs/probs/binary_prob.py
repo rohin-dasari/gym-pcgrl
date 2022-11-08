@@ -25,6 +25,9 @@ class BinaryProblem(Problem):
             "regions": 5,
             "path-length": 1
         }
+        self.target_map = np.zeros((self._width, self._height))
+        self.target_map[1::2, ::2] = 1
+        self.target_map[::2, 1::2] = 1
 
     """
     Get a list of all the different tile names

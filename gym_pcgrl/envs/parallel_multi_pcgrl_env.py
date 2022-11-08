@@ -80,7 +80,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     convert an integer action id to a human readable action
     """
     def get_human_action(self, agent, action):
-        return self._rep.get_human_action(agent, action)
+        return self._rep.get_human_readable_action(agent, action)
 
     def get_agent_heatmaps(self):
         return self._agent_heatmaps
@@ -216,6 +216,23 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     def get_rep_stats(self):
         return self._rep_stats
 
+    def get_level_dims(self):
+        return {'width': self._prob._width, 'height': self._prob._height} 
+
+    def get_reward(self):
+        if not hasattr(self, 'target_map'):
+            level_dims = self.get_level_dims()
+            self.target_map = np.zeros((level_dims['width'], level_dims['height']))
+            self.target_map[1::2, ::2] = 1
+            self.target_map[::2, 1::2] = 1
+
+        assert hasattr(self, 'target_map')
+        current_map = self.get_map()
+        diff = np.equal(current_map, self.target_map).astype(int)
+        #diff = np.sum(np.abs(current_map - self.target_map))
+        return np.sum(diff)
+
+
     """
     Advance the environment using a specific action
 
@@ -256,7 +273,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
         # compute reward
         # assume shared reward signal
-        reward = self._prob.get_reward(new_stats, old_stats)
+        reward = self.get_reward()
+        #reward = self._prob.get_reward(new_stats, old_stats, self._rep.map)
         rewards = {agent: reward for agent in self.agents}
         for agent in self.agents:
             self._cumulative_rewards[agent] += int(reward)

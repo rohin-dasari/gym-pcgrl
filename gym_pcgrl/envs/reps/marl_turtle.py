@@ -250,9 +250,9 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
             elif action == 1:
                 return 'move right'
             elif action == 2:
-                return 'move down'
-            elif action == 3:
                 return 'move up'
+            elif action == 3:
+                return 'move down'
 
         else:
             # handle tile placement actions

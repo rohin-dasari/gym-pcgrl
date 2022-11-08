@@ -5,7 +5,7 @@ import gym_pcgrl
 
 @pytest.fixture
 def binary_env():
-    env = gym.make('Parallel_MAPcgrl-binary-narrow-v0', num_agents=None, binary_actions=True)
+    env = gym.make('Parallel_MAPcgrl-binary-narrow-v0', num_agents=None, binary_actions=True, rep='marl_narrow')
     return env
 
 @pytest.fixture
@@ -159,7 +159,7 @@ def test_against_single_agent_env(sample_level):
         assert multi_rewards[0] == single_rewards
 
 
-def test_max_iterations_limit(binary_env):
+def test_max_iterations_limit():
     
 
     env_config = {
@@ -181,7 +181,33 @@ def test_max_iterations_limit(binary_env):
         else:
             assert done['__all__'] == True
 
+
+def test_map_rewards(binary_env):
+    # test that when level is a checkerboard, the reward is maximum
+    level_dims = binary_env.get_level_dims()
+    target_map = np.zeros((level_dims['width'], level_dims['height']))
+    target_map[1::2, ::2] = 1
+    target_map[::2, 1::2] = 1
+
+    binary_env.reset(initial_level=target_map)
+    reward = binary_env.get_reward()
+
+    assert reward == level_dims['width']*level_dims['height']
+
+    # test that when level is opposite of checkerboard, reward is minimum
+    level_dims = binary_env.get_level_dims()
+    target_map = np.ones((level_dims['width'], level_dims['height']))
+    target_map[1::2, ::2] = 0
+    target_map[::2, 1::2] = 0
+
+    binary_env.reset(initial_level=target_map)
+    reward = binary_env.get_reward()
+
+    assert reward == 0
+
     
+
+
 
 
 #"""
