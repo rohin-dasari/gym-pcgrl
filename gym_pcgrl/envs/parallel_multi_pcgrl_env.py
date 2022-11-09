@@ -220,8 +220,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         return {'width': self._prob._width, 'height': self._prob._height} 
 
     def get_reward(self):
+        level_dims = self.get_level_dims()
         if not hasattr(self, 'target_map'):
-            level_dims = self.get_level_dims()
             self.target_map = np.zeros((level_dims['width'], level_dims['height']))
             self.target_map[1::2, ::2] = 1
             self.target_map[::2, 1::2] = 1
@@ -230,7 +230,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         current_map = self.get_map()
         diff = np.equal(current_map, self.target_map).astype(int)
         #diff = np.sum(np.abs(current_map - self.target_map))
-        return np.sum(diff)
+        return np.sum(diff) / level_dims
 
 
     """
