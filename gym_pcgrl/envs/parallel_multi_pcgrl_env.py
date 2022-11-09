@@ -230,7 +230,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         current_map = self.get_map()
         diff = np.equal(current_map, self.target_map).astype(int)
         #diff = np.sum(np.abs(current_map - self.target_map))
-        return np.sum(diff) / level_dims
+        return np.sum(diff) / (level_dims['width'] * level_dims['height'])
 
 
     """
