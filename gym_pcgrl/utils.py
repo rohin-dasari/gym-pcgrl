@@ -3,13 +3,13 @@ utilities for parsing config and running experiments
 """
 import yaml
 from ray import tune
+from ray.tune import register_env
 from ray.rllib.env.wrappers.pettingzoo_env import PettingZooEnv, ParallelPettingZooEnv
 from gym.spaces import Dict, Discrete, Tuple, MultiDiscrete
+from gym_pcgrl import wrappers
 from gym_pcgrl.wrappers import MARL_CroppedImagePCGRLWrapper_Parallel
 from gym_pcgrl.wrappers import MARL_CroppedImagePCGRLWrapper
 
-def gen_policy(obs_space, action_space, model):
-    pass
 
 def gen_policy(obs_space, act_space, model_config):
     config = {
@@ -23,15 +23,22 @@ def load_config(config_file):
         config = yaml.safe_load(f)
         return config
 
-def env_maker_factory(env_name, is_parallel):
+def env_maker_factory(env_name, is_parallel, is_grouped):
+    if is_grouped:
+        assert is_parallel, "a environment can only be grouped if it is parallel"
+
     def env_maker(env_config):
         # crop size is harcoded, move to config
         if is_parallel:
-            return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
+            if is_grouped:
+                return make_grouped_env(env_name, 28, **env_config)
+            else:
+                return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
         else:
             return MARL_CroppedImagePCGRLWrapper(env_name, 28, **env_config)
 
     if is_parallel:
+        env_name = ('grouped-' if is_grouped else '') + env_name
         tune.register_env(
                 env_name,
                 lambda config: ParallelPettingZooEnv(env_maker(config))
@@ -51,10 +58,10 @@ def parse_qmix_config(config_file):
 
     config = load_config(config_file)
 
-    is_parallel = 'Parallel' in config['rllib_trainer_config']['env']
     env_maker = env_maker_factory(
             config['rllib_trainer_config']['env'],
-            config['is_parallel']
+            config['is_parallel'],
+            config['is_grouped']
             )
     env = env_maker(config['rllib_trainer_config']['env_config'])
     # what classifies as global state?
@@ -97,10 +104,10 @@ def parse_rllib_config(config_file):
     
     config = load_config(config_file)
 
-    is_parallel = 'Parallel' in config['rllib_trainer_config']['env']
     env_maker = env_maker_factory(
             config['rllib_trainer_config']['env'],
-            config['is_parallel']
+            config['is_parallel'],
+            config['is_grouped']
             )
 
     env = env_maker(config['rllib_trainer_config']['env_config'])
@@ -147,4 +154,48 @@ def parse_config(config_file):
             'tune_config': parse_tune_config(config_file)
             }
 
+
+def make_grouped_env(env, crop_size, **kwargs):
+
+    if isinstance(env, str):
+        env = wrappers.MARL_CroppedImagePCGRLWrapper_Parallel(
+                    env_name,
+                    crop_size,
+                    **kwargs
+                )
+
+    grouped_env = wrappers.GroupedWrapper(env)
+    groups = {
+            'group1': grouped_env.possible_agents
+        }
+
+    tuple_obs_space = Tuple(
+                [grouped_env.observation_space \
+                        for _ in grouped_env.possible_agents]
+            )
+    tuple_act_space = Tuple(
+                [grouped_env.action_space \
+                        for _ in grouped_env.possible_agents]
+            )
+
+
+
+    return wrappers.GroupedWrapper(env).with_agent_groups(
+                                            groups,
+                                            obs_space = tuple_obs_space,
+                                            act_space = tuple_act_space
+                                        )
+
+
+
+def register_grouped_env(env_name):
+    register_env(
+            'grouped_env',
+            lambda config: make_grouped_env(
+                            #'Parallel_MAPcgrl-binary-narrow-v0',
+                            env_name,
+                            28,
+                            **config
+                        )
+            )
 

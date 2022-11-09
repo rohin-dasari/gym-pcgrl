@@ -8,7 +8,7 @@ from uuid import uuid4
 from ray import tune
 from gym_pcgrl.utils import parse_config, load_config
 import ray.rllib.agents.ppo as ppo
-import ray.rllib.agents.qmix as qmix
+import ray.rllib.algorithms.qmix as qmix
 from gym_pcgrl.utils import env_maker_factory
 import pandas as pd
 import json
@@ -30,8 +30,8 @@ def restore_trainer(checkpoint_path, config):
     trainer.restore(str(checkpoint_path))
     return trainer
 
-def build_env(env_name, env_config, is_parallel):
-    env_maker = env_maker_factory(env_name, is_parallel)
+def build_env(env_name, env_config, is_parallel, is_grouped):
+    env_maker = env_maker_factory(env_name, is_parallel, is_grouped)
     env_config['render'] = True
     env = env_maker(env_config)
     return env
@@ -113,8 +113,7 @@ def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=Non
 
 def checkpoints_iter(experiment_path):
     experiment_path = Path(experiment_path)
-    checkpoints = filter(lambda f: 'checkpoint' in f.name, experiment_path.iterdir())
-    return checkpoints
+    return filter(lambda f: 'checkpoint' in f.name, experiment_path.iterdir())
 
 def get_best_checkpoint(experiment_path, config):
     # load progress.csv
@@ -125,9 +124,7 @@ def get_best_checkpoint(experiment_path, config):
     max_checkpoint_name = None
     for checkpoint in checkpoints_iter(experiment_path):
         # get number after underscore in checkpoint
-        checkpoint_num = checkpoint.name.split('_')[1].lstrip('0')
-        checkpoint_name = Path(checkpoint, f'checkpoint-{checkpoint_num}')
-        trainer = restore_trainer(checkpoint_name, config)
+        trainer = restore_trainer(Path(checkpoint), config)
         iteration = trainer._iteration
         # look up iteration in progress dataframe
         trainer_performance = progress.loc[progress['training_iteration'] == iteration]
@@ -146,9 +143,7 @@ def get_latest_checkpoint(experiment_path, config):
     latest_checkpoint = None
     latest_checkpoint_name = None
     for checkpoint in checkpoints_iter(experiment_path):
-        checkpoint_num = checkpoint.name.split('_')[1].lstrip('0')
-        checkpoint_name = Path(checkpoint, f'checkpoint-{checkpoint_num}')
-        trainer = restore_trainer(checkpoint_name, config)
+        trainer = restore_trainer(Path(checkpoint), config)
         iteration = trainer._iteration
         if iteration > latest_training_iter:
             latest_training_iter = iteration
@@ -288,7 +283,8 @@ def collect_metrics(
     env = build_env(
             rllib_config['env'],
             rllib_config['env_config'],
-            config['is_parallel']
+            config['is_parallel'],
+            config['is_grouped']
             )
     #env = build_env(
     #        'Parallel_MAPcgrl-binary-narrow-v0', config['env_config'], True

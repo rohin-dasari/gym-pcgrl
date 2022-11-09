@@ -1,10 +1,12 @@
 algorithm: PPO
 is_parallel: true
+is_grouped: false
 rllib_trainer_config:
     # Rllib trainer config
-    env: Parallel_MAPcgrl-binary-narrow-v0
+    env: Parallel_MAPcgrl-binary-marl_narrow-v0
     env_config:
         binary_actions: True
+        max_iterations: 500
     num_gpus: 0
     framework: torch
     output: experiments

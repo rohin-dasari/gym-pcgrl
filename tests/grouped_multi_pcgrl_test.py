@@ -12,11 +12,6 @@ def test_basic():
     env_name = 'Parallel_MAPcgrl-binary-narrow-v0'
     env = MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28)
     grouped_env = GroupedWrapper(env)
-    print(grouped_env.possible_agents)
-    
-    print('ahhhhhh')
-    print(env.observation_space('empty').shape)
-    print(grouped_env.observation_space.shape)
 
 
 
