@@ -105,7 +105,7 @@ class CustomFeedForwardModel3D(TorchModelV2, nn.Module):
         self.pre_fc_size = 128
 
         # Convolutinal layers.
-        self.conv_1 = nn.Conv3d(obs_space.shape[-1], out_channels=64, kernel_size=3, stride=2, padding=1)  # 7 * 7 * 7
+        self.conv_1 = nn.Conv3d(1, out_channels=64, kernel_size=3, stride=2, padding=1)  # 7 * 7 * 7
         self.conv_2 = nn.Conv3d(64, out_channels=128, kernel_size=3, stride=2, padding=1)  # 4 * 4 * 4
         self.conv_3 = nn.Conv3d(128, out_channels=128, kernel_size=3, stride=2, padding=1)  # 2 * 2 * 2
 
@@ -128,7 +128,11 @@ class CustomFeedForwardModel3D(TorchModelV2, nn.Module):
         return th.reshape(self.value_branch(self._features), [-1])
 
     def forward(self, input_dict, state, seq_lens):
-        input = input_dict["obs"].permute(0, 4, 1, 2, 3)  # Because rllib order tensors the tensorflow way (channel last)
+        #raise ValueError(type(input_dict['obs']), len(input_dict['obs']))
+        #raise ValueError(type(input_dict['obs']), input_dict['obs'][0].shape, len(input_dict['obs']))
+        #raise ValueError(input_dict['obs'].keys())
+        key = list(input_dict['obs'].keys())[0]
+        input = input_dict["obs"][key].permute(0, 4, 1, 2, 3)  # Because rllib order tensors the tensorflow way (channel last)
         x = nn.functional.relu(self.conv_1(input.float()))
         x = nn.functional.relu(self.conv_2(x.float()))
         x = nn.functional.relu(self.conv_3(x.float()))

@@ -1,3 +1,4 @@
+from collections import defaultdict
 import gym
 import gym_pcgrl
 
@@ -52,7 +53,22 @@ class MARL_Cropped_Parallel(gym.Wrapper):
             obs_spaces[agent] = obs_space
         self.observation_spaces = obs_spaces
 
-        
+    def get_observation_space_with_groups(self):
+        # assume self.env has groups attribute already
+        # obs space should be nested dictionary
+        # obs_space[group][agent] = gym.Spaces.Box
+        new_obs_space = {}
+        for group, obs_spaces in env.observatioon_spaces.items():
+            new_obs_space[group] = gym.spaces.Dict()
+            for agent, obs_space in obs_spaces.items():
+                new_obs_space[group][agent] = gym.spaces.Box(
+                            low=0,
+                            high=obs_space[self.name].high.max(),
+                            shape=(self.crop_size, self.crop_size),
+                            dtype=np.uint8
+                        )
+    
+
     def step(self, action_dict):
         obss, rews, dones, infos = self.env.step(action_dict)
         obss = self.transform_observations(obss)
@@ -67,6 +83,10 @@ class MARL_Cropped_Parallel(gym.Wrapper):
         return {agent: self.transform(obs) for agent, obs in observations.items()}
 
     def transform(self, obs):
+        if hasattr(self.env, 'groups'):
+            for group, observations in obs.items():
+                for agent, agent_observations in observations.items():
+                    map = obs[self.name]
         map = obs[self.name]
         x, y = obs['pos']
 
@@ -143,7 +163,8 @@ class MARL_ToImage_Parallel(gym.Wrapper):
             obs_spaces[agent] = gym.spaces.Box(
                                 low=0,
                                 high=sample_obs_space['map'].high.max(),
-                                shape=(*sample_obs_space['map'].shape, 1)
+                                shape=(*sample_obs_space['map'].shape, 1),
+                                dtype=np.uint8
                             )
         self.observation_spaces = obs_spaces
 

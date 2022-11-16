@@ -5,48 +5,6 @@ from gym_pcgrl import wrappers
 from gym_pcgrl.utils import make_grouped_env, register_grouped_env
 
 
-#def make_grouped_env(env_name, crop_size, **kwargs):
-#
-#    env = wrappers.MARL_CroppedImagePCGRLWrapper_Parallel(
-#                env_name,
-#                crop_size,
-#                **kwargs
-#                #**{'binary_actions': False, 'num_agents': 3}
-#            )
-#
-#    grouped_env = wrappers.GroupedWrapper(env)
-#    groups = {
-#            'group1': grouped_env.possible_agents
-#        }
-#
-#    tuple_obs_space = Tuple(
-#                [grouped_env.observation_space \
-#                        for _ in grouped_env.possible_agents]
-#            )
-#    tuple_act_space = Tuple(
-#                [grouped_env.action_space \
-#                        for _ in grouped_env.possible_agents]
-#            )
-#
-#
-#
-#    return wrappers.GroupedWrapper(env).with_agent_groups(
-#                                            groups,
-#                                            obs_space = tuple_obs_space,
-#                                            act_space = tuple_act_space
-#                                        )
-#
-#def register_grouped_env(env_name):
-#    register_env(
-#            'grouped_env',
-#            lambda config: make_grouped_env(
-#                            #'Parallel_MAPcgrl-binary-narrow-v0',
-#                            env_name,
-#                            28,
-#                            **config
-#                        )
-#            )
-
 
 if __name__ == '__main__':
     env_name = 'Parallel_MAPcgrl-binary-marl_turtle-v0'

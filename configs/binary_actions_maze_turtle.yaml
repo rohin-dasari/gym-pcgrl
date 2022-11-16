@@ -24,6 +24,7 @@ tune_api_config:
     keep_checkpoints_num: 3
     checkpoint_freq: 1
     checkpoint_at_end: true
+    local_dir: '/home/rdasari/results'
 ####################
 # model config
 model_config: 

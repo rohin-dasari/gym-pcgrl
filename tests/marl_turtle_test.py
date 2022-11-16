@@ -1,12 +1,14 @@
 from copy import deepcopy
 from itertools import product
 import pytest
+import numpy as np
 import gym
 import gym_pcgrl
 from gym_pcgrl.envs.reps import MARL_TurtleRepresentation
 from gym_pcgrl.envs.probs import PROBLEMS
 from gym_pcgrl.envs.helper import get_int_prob
 from gym_pcgrl.utils import env_maker_factory
+from gym_pcgrl.envs import Parallel_MAPcgrlEnv
 
 
 
@@ -111,5 +113,51 @@ def test_pcgrl_env_with_wrapper():
             'max_iterations': 500
             }
     env = env_maker(env_config)
+    import pdb; pdb.set_trace()
 
 
+def test_rep_with_grouping():
+    prob = PROBLEMS['zelda']()
+    tile_types = prob.get_tile_types()
+    rep = MARL_TurtleRepresentation(
+            agents = tile_types,
+            tiles = tile_types,
+            binary_actions = False,
+            warp = False,
+            groups = {
+                    1: ['key', 'door'],
+                    2: ['scorpion', 'spider', 'bat', 'player'],
+                    3: ['empty', 'solid']
+                }
+            )
+    tile_probs = get_int_prob(prob._prob, tile_types)
+    rep.reset(prob._width, prob._height, tile_probs)
+    action_space = rep.get_action_space()
+    observation_space = rep.get_observation_space(prob._width, prob._height, len(prob.get_tile_types()), 500)
+    original_map = np.copy(rep._map)
+    pos = rep.agent_positions[1]
+    print(rep.tile_id_map)
+    print(rep._map[pos['y'], pos['x']])
+    rep.apply_action(1, 4)
+    print(rep._map[pos['y'], pos['x']])
+
+
+def test_env_with_grouping():
+    # create groups
+    groups = {
+            1: ['key', 'door'],
+            2: ['scorpion', 'spider', 'bat', 'player'],
+            3: ['empty', 'solid']
+        }
+    env = Parallel_MAPcgrlEnv(
+            prob='zelda',
+            rep='marl_turtle',
+            groups=groups,
+            binary_actions=False,
+            max_iterations=500
+            )
+    env.reset()
+    env.step({1: 0, 2: 0, 3: 0})
+
+def test_wrapped_env_with_grouping():
+    pass

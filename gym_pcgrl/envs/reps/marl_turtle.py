@@ -1,4 +1,5 @@
 import warnings
+from collections import defaultdict
 from copy import copy
 from random import randint
 from gym_pcgrl.envs.reps.turtle_rep import TurtleRepresentation
@@ -16,7 +17,7 @@ The difference with narrow representation is the agent now controls the next til
 """
 class MARL_TurtleRepresentation(TurtleRepresentation):
 
-    def __init__(self, agents, tiles, binary_actions=True, warp=False):
+    def __init__(self, agents, tiles, binary_actions=True, warp=False, groups=None):
 
         super().__init__(warp)
         self.binary_actions = binary_actions
@@ -26,6 +27,19 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
         #            agent: (randint(1,255), randint(1,255), randint(1,255), 255) 
         #            for agent in self.agents
         #        }
+        self.groups = groups
+        if self.binary_actions:
+            assert self.groups is None, "cannot use agent groupings with binary action space"
+        if self.groups:
+            self.groups_inverse = {}
+            for group, agents in self.groups.items():
+                for agent in agents:
+                    self.groups_inverse[agent] = group
+        #self.groups = {
+        #        1: {'key', 'door'},
+        #        2: {'scorpion', 'spider', 'bat', 'player'},
+        #        3: {'empty', 'solid'}
+        #}
         self.agent_color_mapping = self.init_cmap()
         self.tiles = tiles
 
@@ -56,12 +70,12 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
     """
     def reset(self, width, height, prob, initial_level=None, initial_positions=None):
         self._reset = True
-        super().reset(width, height, prob)
+        super().reset(width, height, prob, initial_level)
         # initialize starting position for each agent
         # there is a unique agent for each tile type
         self.agent_positions = {}
         if initial_positions is None:
-            for i, agent in enumerate(self.agents):
+            for i, agent in enumerate(self.agents if not self.groups else self.groups):
                 # To Do: Hardcoded fixed starting positions
                 self.agent_positions[agent] = {
                             'x': i,
@@ -88,8 +102,22 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
           group. The agent for this group can place either doors or keys
     """
     def get_action_space(self):
-        num_actions = 1 if self.binary_actions else len(self.tiles)
-        return {agent: spaces.Discrete(len(self._dirs) + num_actions) for agent in self.agents}
+        num_actions = len(self._dirs)
+        if self.groups:
+            return {group: spaces.Discrete(num_actions + len(agents)) for group, agents in self.groups.items()}
+        else:
+            if self.binary_actions:
+                num_actions += 1
+            else:
+                num_actions += len(self.tiles)
+            return {agent: spaces.Discrete(num_actions) for agent in self.agents}
+        """
+        action space for each group
+            - binary action space: [left, down, right, up, place tiles in group]
+            - full action space: [left, down, right,  up,  place all tiles]
+        """
+        #return {agent: spaces.Discrete(len(self._dirs))}
+        #return {agent: spaces.Discrete(len(self._dirs) + num_actions) for agent in self.agents}
 
 
     """
@@ -105,7 +133,10 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
         x,y position for the current location. "map" 2D array of tile numbers
     """
     def get_observation_space(self, width, height, num_tiles, max_changes):
-        obs_space = {}
+        # if using groups, group observations in a nested dictionary:
+        # obsspace[group][agent]
+        
+        obs_space = defaultdict(spaces.Dict) if self.groups else {}
         for agent in self.agents:
             obs = spaces.Dict({
                 "map": spaces.Box(low=0, high=num_tiles-1, dtype=np.uint8, shape=(height, width)),
@@ -117,7 +148,10 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
                     shape=(height, width)
                     )
                 })
-            obs_space[agent] = obs
+            if not self.groups:
+                obs_space[agent] = obs
+            else:
+                obs_space[self.groups_inverse[agent]][agent] = obs
 
         return obs_space
 
@@ -161,7 +195,8 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
         x,y position for the current location. "map" 2D array of tile numbers
     """
     def get_observations(self):
-        return {agent: self.get_observation(agent) for agent in self.agents}
+        items = self.agents if not self.groups else self.groups.keys()
+        return {agent: self.get_observation(agent) for agent in items}
 
     def get_observation(self, agent):
         position = self.agent_positions[agent]
@@ -187,7 +222,11 @@ class MARL_TurtleRepresentation(TurtleRepresentation):
             if self.binary_actions:
                 tile_id = self.tile_id_map[agent]
             else:
-                tile_id = action - len(self._dirs)
+                if self.groups:
+                    tile_name = self.groups[agent][action - len(self._dirs)]
+                    tile_id = self.tile_id_map[tile_name]
+                else:
+                    tile_id = action - len(self._dirs)
             change += int(self._map[curr_y][curr_x] != tile_id)
             self._map[curr_y][curr_x] = tile_id
             return change, curr_x, curr_y

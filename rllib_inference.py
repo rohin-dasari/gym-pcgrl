@@ -30,8 +30,8 @@ def restore_trainer(checkpoint_path, config):
     trainer.restore(str(checkpoint_path))
     return trainer
 
-def build_env(env_name, env_config, is_parallel, is_grouped):
-    env_maker = env_maker_factory(env_name, is_parallel, is_grouped)
+def build_env(env_name, env_config, is_parallel):
+    env_maker = env_maker_factory(env_name, is_parallel)
     env_config['render'] = True
     env = env_maker(env_config)
     return env
@@ -69,7 +69,7 @@ def collect_action_metadata(env, actions):
 
 def rollout(env, trainer, policy_mapping_fn=None, render=True, initial_level=None):
     done = False
-    obs = env.reset()
+    obs = env.reset(initial_level)
     agent_positions = {}
 
     rawobs = env.set_state(
@@ -284,7 +284,6 @@ def collect_metrics(
             rllib_config['env'],
             rllib_config['env_config'],
             config['is_parallel'],
-            config['is_grouped']
             )
     #env = build_env(
     #        'Parallel_MAPcgrl-binary-narrow-v0', config['env_config'], True

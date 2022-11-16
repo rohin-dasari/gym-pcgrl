@@ -23,22 +23,17 @@ def load_config(config_file):
         config = yaml.safe_load(f)
         return config
 
-def env_maker_factory(env_name, is_parallel, is_grouped):
-    if is_grouped:
-        assert is_parallel, "a environment can only be grouped if it is parallel"
+def env_maker_factory(env_name, is_parallel):
 
     def env_maker(env_config):
         # crop size is harcoded, move to config
         if is_parallel:
-            if is_grouped:
-                return make_grouped_env(env_name, 28, **env_config)
-            else:
-                return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
+            return MARL_CroppedImagePCGRLWrapper_Parallel(env_name, 28, **env_config)
         else:
             return MARL_CroppedImagePCGRLWrapper(env_name, 28, **env_config)
 
     if is_parallel:
-        env_name = ('grouped-' if is_grouped else '') + env_name
+        #env_name = ('grouped-' if is_grouped else '') + env_name
         tune.register_env(
                 env_name,
                 lambda config: ParallelPettingZooEnv(env_maker(config))
@@ -61,7 +56,6 @@ def parse_qmix_config(config_file):
     env_maker = env_maker_factory(
             config['rllib_trainer_config']['env'],
             config['is_parallel'],
-            config['is_grouped']
             )
     env = env_maker(config['rllib_trainer_config']['env_config'])
     # what classifies as global state?
@@ -97,6 +91,33 @@ def parse_qmix_config(config_file):
     
     pass
 
+
+def get_multiagent_config(config):
+    if 'shared_weights' in config and config['shared_weights']:
+        return {
+                'policies': {'shared_policy'},
+                'policy_mapping_fn': lambda agent_id: "shared_policy"
+            }
+
+    else:
+        env_maker = env_maker_factory(
+                config['rllib_trainer_config']['env'],
+                config['is_parallel'],
+                )
+
+        env = env_maker(config['rllib_trainer_config']['env_config'])
+        sample_agent = env.possible_agents[0]
+        obs_space = env.observation_spaces[sample_agent]
+        action_space = env.action_spaces[sample_agent]
+        policies = {f'policy_{agent}': gen_policy(obs_space, action_space, config['model_config']) for agent in env.possible_agents}
+        return {
+                'policies': policies,
+                'policy_mapping_fn': lambda agent: f'policy_{agent}'
+            }
+
+    policy_mapping_fn = lambda agent: f'policy_{agent}'
+    policies = {f'policy_{agent}': gen_policy(obs_space, action_space, config['model_config']) for agent in env.possible_agents}
+
 def parse_rllib_config(config_file):
     """
     construct a valid rllib trainer config from a flat config
@@ -107,7 +128,6 @@ def parse_rllib_config(config_file):
     env_maker = env_maker_factory(
             config['rllib_trainer_config']['env'],
             config['is_parallel'],
-            config['is_grouped']
             )
 
     env = env_maker(config['rllib_trainer_config']['env_config'])
@@ -117,18 +137,10 @@ def parse_rllib_config(config_file):
 
     policy_mapping_fn = lambda agent: f'policy_{agent}'
     policies = {f'policy_{agent}': gen_policy(obs_space, action_space, config['model_config']) for agent in env.possible_agents}
-    # RLLIB parameters
-    # env
-    # env_config
-    # num_gpus
-    # framework
-    # render_env
     return {
             **config['rllib_trainer_config'],
-            'multiagent': {
-                'policies': policies,
-                'policy_mapping_fn': policy_mapping_fn
-                }
+            'multiagent': get_multiagent_config(config),
+            'model': config['model_config']
             }
 
 def parse_tune_config(config_file):
@@ -159,7 +171,7 @@ def make_grouped_env(env, crop_size, **kwargs):
 
     if isinstance(env, str):
         env = wrappers.MARL_CroppedImagePCGRLWrapper_Parallel(
-                    env_name,
+                    env,
                     crop_size,
                     **kwargs
                 )
@@ -190,7 +202,7 @@ def make_grouped_env(env, crop_size, **kwargs):
 
 def register_grouped_env(env_name):
     register_env(
-            'grouped_env',
+            env_name,
             lambda config: make_grouped_env(
                             #'Parallel_MAPcgrl-binary-narrow-v0',
                             env_name,

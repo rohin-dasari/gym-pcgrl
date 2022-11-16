@@ -32,6 +32,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
                 num_agents=None,
                 prob="binary",
                 rep="marl_narrow",
+                groups=None,
                 binary_actions=True,
                 change_percentage=0.2,
                 rep_kwargs={},
@@ -42,15 +43,22 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
         self.tile_types = self._prob.get_tile_types()
         self.binary_actions = binary_actions
         if binary_actions:
+            assert groups is None, "cannot use agent groupings with binary action space"
             self.possible_agents = self.tile_types
         else:
-            assert num_agents is not None, "The number of agents must be explicitly provided"
-            self.possible_agents = list(range(num_agents))
+            if groups is None:
+                assert num_agents is not None, "The number of agents must be explicitly provided"
+                self.possible_agents = list(range(num_agents))
+            else:
+                self.groups = groups
+                self.possible_agents = list(groups.keys())
         self.agent_name_mapping = {i: agent for i, agent in enumerate(self.possible_agents)}
+        if groups:
+            rep_kwargs['groups'] = groups
 
         # random_tile will be False by default (if it is not passed as an argument)
         self._rep = REPRESENTATIONS[rep](
-                    self.possible_agents,
+                    self.possible_agents if not groups else self.tile_types,
                     tiles=self.tile_types,
                     binary_actions=binary_actions,
                     **rep_kwargs,
@@ -222,7 +230,7 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
     def get_reward(self):
         level_dims = self.get_level_dims()
         if not hasattr(self, 'target_map'):
-            self.target_map = np.zeros((level_dims['width'], level_dims['height']))
+            self.target_map = np.zeros((level_dims['height'], level_dims['width']))
             self.target_map[1::2, ::2] = 1
             self.target_map[::2, 1::2] = 1
 
@@ -273,8 +281,8 @@ class Parallel_MAPcgrlEnv(PcgrlEnv, ParallelEnv):
 
         # compute reward
         # assume shared reward signal
-        reward = self.get_reward()
-        #reward = self._prob.get_reward(new_stats, old_stats, self._rep.map)
+        #reward = self.get_reward()
+        reward = self._prob.get_reward(new_stats, old_stats)
         rewards = {agent: reward for agent in self.agents}
         for agent in self.agents:
             self._cumulative_rewards[agent] += int(reward)
