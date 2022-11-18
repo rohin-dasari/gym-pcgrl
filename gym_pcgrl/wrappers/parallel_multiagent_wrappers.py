@@ -67,6 +67,8 @@ class MARL_Cropped_Parallel(gym.Wrapper):
                             shape=(self.crop_size, self.crop_size),
                             dtype=np.uint8
                         )
+    def transform_with_groups(self):
+        pass
     
 
     def step(self, action_dict):

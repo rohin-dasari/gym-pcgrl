@@ -12,6 +12,7 @@ rllib_trainer_config:
     output: experiments
     render_env: false
     lr: 0.0001
+    num_workers: 8
 tune_api_config:
     ####################
     # Tune API parameters
